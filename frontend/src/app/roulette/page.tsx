@@ -1,11 +1,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ClockIcon, UserIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
+import { ClockIcon, UserIcon, CubeIcon } from '@heroicons/react/24/outline'
 
 const RoulettePage = () => {
   const [selectedBet, setSelectedBet] = useState<string | null>(null)
-  const [betAmount, setBetAmount] = useState('')
+  const [selectedSkin, setSelectedSkin] = useState<string | null>(null)
   
   const rouletteNumbers = [
     { number: 0, color: 'green' },
@@ -22,10 +22,18 @@ const RoulettePage = () => {
   ]
 
   const currentBets = [
-    { user: 'Player1', amount: '$45.50', bet: 'Red', avatar: '🎮' },
-    { user: 'CSGOPro', amount: '$123.00', bet: 'Black', avatar: '⚡' },
-    { user: 'SkinTrader', amount: '$78.25', bet: '0', avatar: '💎' },
-    { user: 'GamerX', amount: '$92.00', bet: 'Red', avatar: '🔥' },
+    { user: 'Player1', skin: 'AK-47 Redline', value: '$45.50', bet: 'Red', avatar: '🎮' },
+    { user: 'CSGOPro', skin: 'AWP Lightning Strike', value: '$123.00', bet: 'Black', avatar: '⚡' },
+    { user: 'SkinTrader', skin: 'Karambit Fade', value: '$780.25', bet: '0', avatar: '💎' },
+    { user: 'GamerX', skin: 'M4A4 Howl', value: '$1,890.00', bet: 'Red', avatar: '🔥' },
+  ]
+
+  const userSkins = [
+    { name: 'AK-47 Redline', value: 45.50, condition: 'Field-Tested' },
+    { name: 'AWP Dragon Lore', value: 2450.00, condition: 'Battle-Scarred' },
+    { name: 'Glock-18 Fade', value: 125.75, condition: 'Factory New' },
+    { name: 'Desert Eagle Blaze', value: 89.30, condition: 'Minimal Wear' },
+    { name: 'M4A1-S Hot Rod', value: 156.80, condition: 'Factory New' },
   ]
 
   const getBetColor = (color: string) => {
@@ -34,6 +42,17 @@ const RoulettePage = () => {
       case 'black': return 'bg-gray-800'
       case 'green': return 'bg-green-600'
       default: return 'bg-gray-600'
+    }
+  }
+
+  const getConditionColor = (condition: string) => {
+    switch (condition) {
+      case 'Factory New': return 'text-blue-400'
+      case 'Minimal Wear': return 'text-green-400'
+      case 'Field-Tested': return 'text-yellow-400'
+      case 'Well-Worn': return 'text-orange-400'
+      case 'Battle-Scarred': return 'text-red-400'
+      default: return 'text-gray-400'
     }
   }
 
@@ -46,7 +65,7 @@ const RoulettePage = () => {
             🎯 <span className="neon-text">Roulette</span>
           </h1>
           <p className="text-xl text-gray-300">
-            Classic casino roulette with CS:GO skins
+            Classic casino roulette with CS2 skins
           </p>
         </div>
 
@@ -145,18 +164,44 @@ const RoulettePage = () => {
                 </button>
               </div>
 
-              {/* Bet Input */}
-              <div className="flex gap-4">
-                <input
-                  type="number"
-                  placeholder="Bet amount ($)"
-                  value={betAmount}
-                  onChange={(e) => setBetAmount(e.target.value)}
-                  className="gaming-input flex-1"
-                />
+              {/* Skin Selection */}
+              <div className="mb-4">
+                <h4 className="text-lg font-semibold text-white mb-3">Select Skin to Bet</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+                  {userSkins.map((skin, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedSkin(skin.name)}
+                      className={`
+                        p-3 rounded-lg border transition-all text-left
+                        ${selectedSkin === skin.name 
+                          ? 'border-accent-primary bg-accent-primary/10' 
+                          : 'border-gray-600 bg-gaming-darker hover:bg-gaming-hover'
+                        }
+                      `}
+                    >
+                      <div className="font-semibold text-white text-sm">{skin.name}</div>
+                      <div className={`text-xs ${getConditionColor(skin.condition)}`}>
+                        {skin.condition}
+                      </div>
+                      <div className="text-accent-success font-semibold text-sm">
+                        ${skin.value.toFixed(2)}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Place Bet Button */}
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-gray-400">
+                  {selectedBet && selectedSkin && (
+                    <>Betting {selectedSkin} (${userSkins.find(s => s.name === selectedSkin)?.value.toFixed(2)}) on {selectedBet.toUpperCase()}</>
+                  )}
+                </div>
                 <button 
                   className="gaming-button px-8"
-                  disabled={!selectedBet || !betAmount}
+                  disabled={!selectedBet || !selectedSkin}
                 >
                   Place Bet
                 </button>
@@ -174,16 +219,17 @@ const RoulettePage = () => {
               </h3>
               <div className="space-y-3">
                 {currentBets.map((bet, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gaming-hover rounded-lg">
-                    <div className="flex items-center space-x-3">
+                  <div key={index} className="p-3 bg-gaming-hover rounded-lg">
+                    <div className="flex items-center space-x-3 mb-2">
                       <span className="text-2xl">{bet.avatar}</span>
-                      <div>
+                      <div className="flex-1">
                         <div className="font-semibold text-white text-sm">{bet.user}</div>
-                        <div className="text-xs text-gray-400">{bet.bet}</div>
+                        <div className="text-xs text-gray-400">betting on {bet.bet}</div>
                       </div>
                     </div>
-                    <div className="text-accent-success font-semibold text-sm">
-                      {bet.amount}
+                    <div className="ml-11">
+                      <div className="text-sm text-gray-300 truncate">{bet.skin}</div>
+                      <div className="text-accent-success font-semibold text-sm">{bet.value}</div>
                     </div>
                   </div>
                 ))}
@@ -212,8 +258,12 @@ const RoulettePage = () => {
               <h3 className="text-xl font-bold text-white mb-4">Game Info</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Total Pot:</span>
+                  <span className="text-gray-400">Total Pot Value:</span>
                   <span className="text-accent-success font-semibold">$2,457.80</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Skins in Pot:</span>
+                  <span className="text-white">18 items</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Players:</span>
@@ -224,11 +274,11 @@ const RoulettePage = () => {
                   <span className="text-white">2.7%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Min Bet:</span>
+                  <span className="text-gray-400">Min Bet Value:</span>
                   <span className="text-white">$1.00</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Max Bet:</span>
+                  <span className="text-gray-400">Max Bet Value:</span>
                   <span className="text-white">$1,000</span>
                 </div>
               </div>

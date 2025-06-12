@@ -8,7 +8,7 @@ import {
   UserGroupIcon,
   ShieldCheckIcon,
   ChartBarIcon,
-  CurrencyDollarIcon
+  CubeIcon
 } from '@heroicons/react/24/outline'
 
 const HomePage = () => {
@@ -20,7 +20,8 @@ const HomePage = () => {
       icon: '🎯',
       color: 'from-red-500 to-red-600',
       players: 234,
-      jackpot: '$12,430'
+      potItems: ['AK-47 Redline', 'AWP Lightning Strike', 'M4A4 Howl'],
+      potValue: '$12,430'
     },
     {
       name: 'Coin Flip',
@@ -29,7 +30,8 @@ const HomePage = () => {
       icon: '🪙',
       color: 'from-blue-500 to-blue-600',
       players: 89,
-      jackpot: '$3,240'
+      potItems: ['Karambit Doppler', 'Glock Fade'],
+      potValue: '$3,240'
     },
     {
       name: 'Crash',
@@ -38,7 +40,8 @@ const HomePage = () => {
       icon: '📈',
       color: 'from-green-500 to-green-600',
       players: 156,
-      jackpot: '$8,750'
+      potItems: ['Desert Eagle Blaze', 'AK-47 Fire Serpent'],
+      potValue: '$8,750'
     },
     {
       name: 'Jackpot',
@@ -47,7 +50,8 @@ const HomePage = () => {
       icon: '💎',
       color: 'from-purple-500 to-purple-600',
       players: 45,
-      jackpot: '$25,690'
+      potItems: ['Dragon Lore AWP', 'Butterfly Knife', 'M4A4 Howl'],
+      potValue: '$25,690'
     },
     {
       name: 'Case Opening',
@@ -56,14 +60,15 @@ const HomePage = () => {
       icon: '📦',
       color: 'from-yellow-500 to-yellow-600',
       players: 78,
-      jackpot: '$5,120'
+      potItems: ['Chroma 3 Case', 'Operation Bravo Case'],
+      potValue: '$5,120'
     }
   ]
 
   const stats = [
     { label: 'Total Players', value: '15,249', icon: UserGroupIcon },
     { label: 'Games Played', value: '2.1M+', icon: PlayIcon },
-    { label: 'Total Wagered', value: '$89.2M', icon: CurrencyDollarIcon },
+    { label: 'Skins Wagered', value: '89.2K+', icon: CubeIcon },
     { label: 'Winners Today', value: '1,834', icon: TrophyIcon }
   ]
 
@@ -75,7 +80,7 @@ const HomePage = () => {
           <div className="mb-8">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               <span className="bg-gradient-neon bg-clip-text text-transparent">
-                CS:GO Skin
+                CS2 Skin
               </span>
               <br />
               <span className="text-white">
@@ -83,16 +88,18 @@ const HomePage = () => {
               </span>
             </h1>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-              Experience the thrill of CS:GO/CS2 skin gambling with provably fair games, 
-              instant deposits, and real-time action. Join thousands of players today!
+              Experience the thrill of CS2 skin gambling with provably fair games, 
+              instant deposits, and real-time action. Deposit your skins and join thousands of players today!
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <button className="gaming-button text-lg px-8 py-4">
-              <PlayIcon className="w-6 h-6 mr-2 inline" />
-              Start Playing
-            </button>
+            <Link href="/deposit">
+              <button className="gaming-button text-lg px-8 py-4">
+                <CubeIcon className="w-6 h-6 mr-2 inline" />
+                Deposit Skins
+              </button>
+            </Link>
             <button className="gaming-button-secondary text-lg px-8 py-4">
               <ShieldCheckIcon className="w-6 h-6 mr-2 inline" />
               Provably Fair
@@ -120,7 +127,7 @@ const HomePage = () => {
               Choose Your <span className="neon-text">Game</span>
             </h2>
             <p className="text-xl text-gray-300">
-              Fair, fast, and thrilling games with real CS:GO/CS2 skins
+              Fair, fast, and thrilling games with real CS2 skins
             </p>
           </div>
 
@@ -143,14 +150,29 @@ const HomePage = () => {
                     {game.description}
                   </p>
                   
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mb-4">
                     <div>
                       <div className="text-sm text-gray-400">Players Online</div>
                       <div className="text-accent-primary font-semibold">{game.players}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm text-gray-400">Pot Size</div>
-                      <div className="text-accent-success font-semibold">{game.jackpot}</div>
+                      <div className="text-sm text-gray-400">Pot Value</div>
+                      <div className="text-accent-success font-semibold">{game.potValue}</div>
+                    </div>
+                  </div>
+
+                  {/* Featured Skins in Pot */}
+                  <div className="border-t border-gray-700 pt-3">
+                    <div className="text-xs text-gray-500 mb-1">Featured Skins:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {game.potItems.slice(0, 2).map((item, idx) => (
+                        <span key={idx} className="text-xs bg-gaming-dark/50 px-2 py-1 rounded text-gray-300">
+                          {item}
+                        </span>
+                      ))}
+                      {game.potItems.length > 2 && (
+                        <span className="text-xs text-gray-400">+{game.potItems.length - 2} more</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -186,13 +208,13 @@ const HomePage = () => {
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Real-Time Action</h3>
               <p className="text-gray-400">
-                Experience instant deposits, live games, and real-time chat with other players.
+                Experience instant skin deposits, live games, and real-time chat with other players.
               </p>
             </div>
 
             <div className="text-center">
               <div className="bg-gradient-neon p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <CurrencyDollarIcon className="w-8 h-8 text-gaming-dark" />
+                <CubeIcon className="w-8 h-8 text-gaming-dark" />
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Instant Payouts</h3>
               <p className="text-gray-400">
