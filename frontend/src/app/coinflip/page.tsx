@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react'
 import { UserIcon, ClockIcon, FireIcon, CubeIcon } from '@heroicons/react/24/outline'
+import { useSound } from '@/hooks/useSound'
 
 const CoinFlipPage = () => {
+  const { gameActions } = useSound()
   const [selectedSide, setSelectedSide] = useState<'heads' | 'tails' | null>(null)
   const [selectedSkins, setSelectedSkins] = useState<string[]>([])
 
@@ -93,6 +95,7 @@ const CoinFlipPage = () => {
   }
 
   const toggleSkinSelection = (skinName: string) => {
+    gameActions.buttonClick()
     setSelectedSkins(prev => 
       prev.includes(skinName) 
         ? prev.filter(s => s !== skinName)
@@ -130,7 +133,10 @@ const CoinFlipPage = () => {
               {/* Coin Selection */}
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <button
-                  onClick={() => setSelectedSide('heads')}
+                  onClick={() => {
+                    gameActions.coinFlip()
+                    setSelectedSide('heads')
+                  }}
                   className={`
                     p-8 rounded-lg border-2 transition-all duration-300 group
                     ${selectedSide === 'heads' 
@@ -147,7 +153,10 @@ const CoinFlipPage = () => {
                 </button>
 
                 <button
-                  onClick={() => setSelectedSide('tails')}
+                  onClick={() => {
+                    gameActions.coinFlip()
+                    setSelectedSide('tails')
+                  }}
                   className={`
                     p-8 rounded-lg border-2 transition-all duration-300 group
                     ${selectedSide === 'tails' 

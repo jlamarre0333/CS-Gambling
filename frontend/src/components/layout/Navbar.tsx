@@ -9,13 +9,16 @@ import {
   WalletIcon,
   CogIcon
 } from '@heroicons/react/24/outline'
+import { SoundToggle, SoundSettings } from '@/components/ui/SoundSettings'
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [showSoundSettings, setShowSoundSettings] = useState(false)
 
   const navigation = [
     { name: 'Games', href: '/games' },
     { name: 'Deposit', href: '/deposit' },
+    { name: 'Withdraw', href: '/withdraw' },
     { name: 'Roulette', href: '/roulette' },
     { name: 'Coin Flip', href: '/coinflip' },
     { name: 'Crash', href: '/crash' },
@@ -61,7 +64,12 @@ const Navbar = () => {
             <button className="gaming-button text-sm">
               Login with Steam
             </button>
-            <button className="p-2 text-gray-400 hover:text-accent-primary transition-colors">
+            <SoundToggle />
+            <button 
+              onClick={() => setShowSoundSettings(true)}
+              className="p-2 text-gray-400 hover:text-accent-primary transition-colors"
+              title="Sound Settings"
+            >
               <CogIcon className="w-5 h-5" />
             </button>
           </div>
@@ -97,6 +105,16 @@ const Navbar = () => {
               </Link>
             ))}
             <div className="pt-4 space-y-2">
+              <div className="flex items-center justify-between mb-2">
+                <SoundToggle />
+                <button 
+                  onClick={() => setShowSoundSettings(true)}
+                  className="p-2 text-gray-400 hover:text-accent-primary transition-colors"
+                  title="Sound Settings"
+                >
+                  <CogIcon className="w-5 h-5" />
+                </button>
+              </div>
               <button className="gaming-button-secondary w-full text-sm">
                 <WalletIcon className="w-4 h-4 mr-2 inline" />
                 Deposit
@@ -108,6 +126,12 @@ const Navbar = () => {
           </div>
         </div>
       )}
+
+      {/* Sound Settings Modal */}
+      <SoundSettings 
+        isOpen={showSoundSettings} 
+        onClose={() => setShowSoundSettings(false)} 
+      />
     </nav>
   )
 }

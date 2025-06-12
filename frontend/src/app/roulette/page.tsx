@@ -1,11 +1,15 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ClockIcon, UserIcon, CubeIcon } from '@heroicons/react/24/outline'
+import { useSound } from '@/hooks/useSound'
 
 const RoulettePage = () => {
+  const { gameActions } = useSound()
   const [selectedBet, setSelectedBet] = useState<string | null>(null)
   const [selectedSkin, setSelectedSkin] = useState<string | null>(null)
+  const [isSpinning, setIsSpinning] = useState(false)
+  const [gameResult, setGameResult] = useState<number | null>(null)
   
   const rouletteNumbers = [
     { number: 0, color: 'green' },
@@ -56,6 +60,58 @@ const RoulettePage = () => {
     }
   }
 
+  const placeBet = () => {
+    if (!selectedBet || !selectedSkin || isSpinning) return
+    
+    gameActions.placeBet()
+    setIsSpinning(true)
+    
+    // Start wheel spinning sound
+    gameActions.wheelSpin()
+    
+    // Simulate spin duration (3-5 seconds)
+    const spinDuration = 3000 + Math.random() * 2000
+    
+    setTimeout(() => {
+      // Stop spinning sound and play stop sound
+      gameActions.wheelStop()
+      
+      // Generate random result
+      const result = Math.floor(Math.random() * rouletteNumbers.length)
+      const winningNumber = rouletteNumbers[result]
+      setGameResult(winningNumber.number)
+      
+      // Check if player won
+      const playerWon = checkWin(selectedBet, winningNumber)
+      
+      if (playerWon) {
+        const betValue = userSkins.find(s => s.name === selectedSkin)?.value || 0
+        if (betValue > 200) {
+          gameActions.winBig()
+        } else {
+          gameActions.winSmall()
+        }
+      } else {
+        gameActions.lose()
+      }
+      
+      // Reset after showing result
+      setTimeout(() => {
+        setIsSpinning(false)
+        setGameResult(null)
+        setSelectedBet(null)
+        setSelectedSkin(null)
+      }, 3000)
+    }, spinDuration)
+  }
+  
+  const checkWin = (bet: string, winningNumber: { number: number; color: string }) => {
+    if (bet === winningNumber.number.toString()) return true
+    if (bet === winningNumber.color) return true
+    if (bet === 'green' && winningNumber.number === 0) return true
+    return false
+  }
+
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -89,11 +145,32 @@ const RoulettePage = () => {
               
               {/* Roulette Wheel */}
               <div className="relative">
-                <div className="w-80 h-80 mx-auto bg-gaming-darker rounded-full border-4 border-accent-primary shadow-neon relative overflow-hidden">
+                <div className={`w-80 h-80 mx-auto bg-gaming-darker rounded-full border-4 border-accent-primary shadow-neon relative overflow-hidden ${
+                  isSpinning ? 'animate-spin' : ''
+                }`}>
                   <div className="absolute inset-4 bg-gradient-gaming rounded-full flex items-center justify-center">
-                    <div className="text-6xl font-bold text-accent-primary animate-pulse">
-                      ?
-                    </div>
+                    {gameResult !== null ? (
+                      <div className="text-center">
+                        <div className="text-6xl font-bold text-accent-primary mb-2">
+                          {gameResult}
+                        </div>
+                        <div className={`text-xl font-semibold ${
+                          rouletteNumbers.find(n => n.number === gameResult)?.color === 'red' ? 'text-red-400' :
+                          rouletteNumbers.find(n => n.number === gameResult)?.color === 'black' ? 'text-gray-300' :
+                          'text-green-400'
+                        }`}>
+                          {rouletteNumbers.find(n => n.number === gameResult)?.color.toUpperCase()}
+                        </div>
+                      </div>
+                    ) : isSpinning ? (
+                      <div className="text-6xl font-bold text-accent-primary animate-pulse">
+                        🎡
+                      </div>
+                    ) : (
+                      <div className="text-6xl font-bold text-accent-primary animate-pulse">
+                        ?
+                      </div>
+                    )}
                   </div>
                   {/* Spinning indicator */}
                   <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-8 border-transparent border-b-accent-primary"></div>
@@ -200,10 +277,11 @@ const RoulettePage = () => {
                   )}
                 </div>
                 <button 
+                  onClick={placeBet}
                   className="gaming-button px-8"
-                  disabled={!selectedBet || !selectedSkin}
+                  disabled={!selectedBet || !selectedSkin || isSpinning}
                 >
-                  Place Bet
+                  {isSpinning ? 'Spinning...' : 'Place Bet'}
                 </button>
               </div>
             </div>

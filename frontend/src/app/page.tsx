@@ -10,6 +10,8 @@ import {
   ChartBarIcon,
   CubeIcon
 } from '@heroicons/react/24/outline'
+import AnimatedCounter from '@/components/ui/AnimatedCounter'
+import NotificationDemo from '@/components/ui/NotificationDemo'
 
 const HomePage = () => {
   const games = [
@@ -66,10 +68,10 @@ const HomePage = () => {
   ]
 
   const stats = [
-    { label: 'Total Players', value: '15,249', icon: UserGroupIcon },
-    { label: 'Games Played', value: '2.1M+', icon: PlayIcon },
-    { label: 'Skins Wagered', value: '89.2K+', icon: CubeIcon },
-    { label: 'Winners Today', value: '1,834', icon: TrophyIcon }
+    { label: 'Total Players', value: 15249, icon: UserGroupIcon, format: 'number' },
+    { label: 'Games Played', value: 2100000, icon: PlayIcon, format: 'millions', suffix: 'M+' },
+    { label: 'Skins Wagered', value: 89200, icon: CubeIcon, format: 'thousands', suffix: 'K+' },
+    { label: 'Winners Today', value: 1834, icon: TrophyIcon, format: 'number' }
   ]
 
   return (
@@ -109,9 +111,25 @@ const HomePage = () => {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {stats.map((stat, index) => (
-              <div key={index} className="gaming-card p-6 text-center">
+              <div key={index} className="gaming-card p-6 text-center hover:transform hover:scale-105 transition-all duration-200">
                 <stat.icon className="w-8 h-8 text-accent-primary mx-auto mb-2" />
-                <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
+                <div className="text-2xl font-bold text-white mb-1">
+                  {stat.format === 'number' && (
+                    <AnimatedCounter from={0} to={stat.value} duration={2000} />
+                  )}
+                  {stat.format === 'millions' && (
+                    <>
+                      <AnimatedCounter from={0} to={2.1} duration={2000} decimals={1} />
+                      <span>{stat.suffix}</span>
+                    </>
+                  )}
+                  {stat.format === 'thousands' && (
+                    <>
+                      <AnimatedCounter from={0} to={89.2} duration={2000} decimals={1} />
+                      <span>{stat.suffix}</span>
+                    </>
+                  )}
+                </div>
                 <div className="text-sm text-gray-400">{stat.label}</div>
               </div>
             ))}
@@ -224,6 +242,9 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* Notification Demo - Temporary for testing */}
+      <NotificationDemo />
     </div>
   )
 }

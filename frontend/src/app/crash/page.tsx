@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from 'react'
 import { ArrowTrendingUpIcon, BoltIcon, ClockIcon, CubeIcon } from '@heroicons/react/24/outline'
+import { useSound } from '@/hooks/useSound'
 
 const CrashPage = () => {
+  const { gameActions } = useSound()
   const [selectedSkins, setSelectedSkins] = useState<string[]>([])
   const [autoCashout, setAutoCashout] = useState('')
   const [currentMultiplier, setCurrentMultiplier] = useState(1.00)
@@ -20,6 +22,8 @@ const CrashPage = () => {
           // Random crash between 1.1x and 10x for demo
           if (Math.random() < 0.02) {
             setGameState('crashed')
+            // Play crash explosion sound
+            gameActions.crashExplosion()
             setTimeout(() => {
               setGameState('waiting')
               setCurrentMultiplier(1.00)
@@ -31,7 +35,7 @@ const CrashPage = () => {
       }, 100)
     }
     return () => clearInterval(interval)
-  }, [gameState])
+  }, [gameState, gameActions])
 
   const activePlayers = [
     { 
@@ -105,6 +109,7 @@ const CrashPage = () => {
   }
 
   const toggleSkinSelection = (skinName: string) => {
+    gameActions.buttonClick()
     setSelectedSkins(prev => 
       prev.includes(skinName) 
         ? prev.filter(s => s !== skinName)
@@ -121,6 +126,8 @@ const CrashPage = () => {
 
   const startGame = () => {
     if (gameState === 'waiting' && selectedSkins.length > 0) {
+      gameActions.placeBet()
+      gameActions.crashTakeoff()
       setGameState('running')
       setIsPlaying(true)
     }
@@ -128,6 +135,12 @@ const CrashPage = () => {
 
   const cashOut = () => {
     if (gameState === 'running' && isPlaying) {
+      const winnings = getTotalSelectedValue() * currentMultiplier
+      if (winnings > 200) {
+        gameActions.winBig()
+      } else {
+        gameActions.winSmall()
+      }
       setIsPlaying(false)
       // Calculate winnings here
     }
