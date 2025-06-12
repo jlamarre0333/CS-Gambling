@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { 
   WalletIcon, 
@@ -10,6 +10,58 @@ import {
   MagnifyingGlassIcon,
   ArrowPathIcon
 } from '@heroicons/react/24/outline'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  FiCreditCard, 
+  FiDollarSign, 
+  FiTrendingUp,
+  FiShield,
+  FiClock,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiRefreshCw,
+  FiDownload,
+  FiUpload,
+  FiEye,
+  FiStar,
+  FiFilter
+} from 'react-icons/fi'
+
+interface SkinItem {
+  id: string;
+  name: string;
+  game: string;
+  rarity: 'Consumer' | 'Industrial' | 'Mil-Spec' | 'Restricted' | 'Classified' | 'Covert' | 'Contraband';
+  quality: 'Factory New' | 'Minimal Wear' | 'Field-Tested' | 'Well-Worn' | 'Battle-Scarred';
+  price: number;
+  image: string;
+  marketPrice: number;
+  float: number;
+  stickers?: string[];
+}
+
+interface PaymentMethod {
+  id: string;
+  name: string;
+  type: 'crypto' | 'card' | 'ewallet' | 'skin';
+  icon: string;
+  fees: number;
+  minAmount: number;
+  maxAmount: number;
+  processingTime: string;
+  supported: boolean;
+}
+
+interface Transaction {
+  id: string;
+  type: 'deposit' | 'withdrawal';
+  method: string;
+  amount: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  timestamp: Date;
+  txHash?: string;
+  items?: SkinItem[];
+}
 
 const DepositPage = () => {
   const [steamConnected, setSteamConnected] = useState(true) // Set to true for demo
@@ -17,6 +69,12 @@ const DepositPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('value')
   const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw' | 'history'>('deposit')
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null)
+  const [amount, setAmount] = useState<number>(0)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [userBalance, setUserBalance] = useState(1250.75)
+  const [filterRarity, setFilterRarity] = useState<string>('all')
 
   // Mock CS:GO/CS2 skin data with realistic names and values
   const steamInventory = [
@@ -151,6 +209,82 @@ const DepositPage = () => {
       setSelectedSkins([])
       // Show success message
     }, 2000)
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'text-green-400 bg-green-500/20'
+      case 'processing': return 'text-yellow-400 bg-yellow-500/20'
+      case 'pending': return 'text-blue-400 bg-blue-500/20'
+      case 'failed': return 'text-red-400 bg-red-500/20'
+      case 'cancelled': return 'text-gray-400 bg-gray-500/20'
+      default: return 'text-gray-400 bg-gray-500/20'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return <FiCheckCircle />
+      case 'processing': return <FiRefreshCw className="animate-spin" />
+      case 'pending': return <FiClock />
+      case 'failed': return <FiAlertCircle />
+      case 'cancelled': return <FiAlertCircle />
+      default: return <FiClock />
+    }
+  }
+
+  const filteredSkins = filterRarity === 'all' 
+    ? steamInventory 
+    : steamInventory.filter(skin => skin.rarity === filterRarity)
+
+  const handleSkinToggle = (skin: SkinItem) => {
+    setSelectedSkins(prev => {
+      const isSelected = prev.find(s => s.id === skin.id)
+      if (isSelected) {
+        return prev.filter(s => s.id !== skin.id)
+      } else {
+        return [...prev, skin.id]
+      }
+    })
+  }
+
+  const selectedSkinsValue = selectedSkins.reduce((sum, skinId) => {
+    const skin = steamInventory.find(s => s.id === skinId)
+    return sum + (skin?.value || 0)
+  }, 0)
+
+  const processPayment = () => {
+    const newTransaction: Transaction = {
+      id: (transactions.length + 1).toString(),
+      type: activeTab as 'deposit' | 'withdrawal',
+      method: selectedMethod?.name || 'Unknown',
+      amount: selectedMethod?.type === 'skin' ? selectedSkinsValue : amount,
+      status: 'processing',
+      timestamp: new Date(),
+      items: selectedMethod?.type === 'skin' ? selectedSkins.map(id => steamInventory.find(s => s.id === id)!) : undefined
+    }
+
+    setTransactions(prev => [newTransaction, ...prev])
+    
+    // Simulate processing
+    setTimeout(() => {
+      setTransactions(prev => prev.map(tx => 
+        tx.id === newTransaction.id 
+          ? { ...tx, status: 'completed' as const }
+          : tx
+      ))
+      
+      if (activeTab === 'deposit') {
+        setUserBalance(prev => prev + newTransaction.amount)
+      } else {
+        setUserBalance(prev => prev - newTransaction.amount)
+      }
+    }, 3000)
+
+    setSelectedMethod(null)
+    setAmount(0)
+    setSelectedSkins([])
+    setActiveTab('history')
   }
 
   return (

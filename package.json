@@ -35,5 +35,8 @@
     "steam"
   ],
   "author": "Your Name",
-  "license": "MIT"
-} 
+  "license": "MIT",
+  "dependencies": {
+    "sqlite3": "^5.1.7"
+  }
+}

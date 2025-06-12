@@ -1,0 +1,218 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  steamId     String?  @unique
+  username    String   @unique
+  email       String?  @unique
+  balance     Decimal  @default(1000.00) @db.Decimal(10, 2)
+  avatar      String?
+  level       Int      @default(1)
+  experience  Int      @default(0)
+  
+  // Statistics
+  totalWagered   Decimal @default(0) @db.Decimal(12, 2)
+  totalWon       Decimal @default(0) @db.Decimal(12, 2)
+  gamesPlayed    Int     @default(0)
+  winStreak      Int     @default(0)
+  maxWinStreak   Int     @default(0)
+  
+  // Security
+  isVerified     Boolean @default(false)
+  isBanned       Boolean @default(false)
+  banReason      String?
+  lastLoginAt    DateTime?
+  ipAddress      String?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  games       Game[]
+  transactions Transaction[]
+  sessions    UserSession[]
+  
+  @@map("users")
+}
+
+model Game {
+  id          String   @id @default(uuid())
+  userId      String
+  gameType    GameType
+  betAmount   Decimal  @db.Decimal(10, 2)
+  winAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  multiplier  Decimal  @default(0) @db.Decimal(8, 4)
+  result      GameResult
+  gameData    Json?    // Store game-specific data (cards, spin results, etc.)
+  
+  // House edge tracking
+  houseEdge   Decimal? @db.Decimal(6, 4)
+  
+  // Provably fair
+  serverSeed  String?
+  clientSeed  String?
+  nonce       Int?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("games")
+}
+
+model Transaction {
+  id                    String            @id @default(uuid())
+  userId                String
+  type                  TransactionType
+  amount                Decimal           @db.Decimal(10, 2)
+  status                TransactionStatus @default(PENDING)
+  
+  // Payment details
+  paymentMethod         PaymentMethod?
+  externalTransactionId String?
+  
+  // Metadata
+  description           String?
+  metadata              Json?
+  
+  // Timestamps
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  completedAt          DateTime?
+  
+  // Relations
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("transactions")
+}
+
+model UserSession {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_sessions")
+}
+
+model JackpotRound {
+  id          String   @id @default(uuid())
+  roundNumber Int      @unique @default(autoincrement())
+  status      JackpotStatus @default(OPEN)
+  totalPot    Decimal  @default(0) @db.Decimal(12, 2)
+  winnerId    String?
+  winnerTickets Int?
+  totalTickets  Int    @default(0)
+  
+  // Timing
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  drawAt      DateTime?
+  
+  // Provably fair
+  serverSeed  String?
+  clientSeed  String?
+  winningTicket Int?
+  
+  // Relations
+  entries     JackpotEntry[]
+  
+  @@map("jackpot_rounds")
+}
+
+model JackpotEntry {
+  id        String   @id @default(uuid())
+  roundId   String
+  userId    String
+  betAmount Decimal  @db.Decimal(10, 2)
+  tickets   Int
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  
+  // Relations
+  round     JackpotRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  
+  @@map("jackpot_entries")
+}
+
+// Enums
+enum GameType {
+  CRASH
+  COINFLIP
+  ROULETTE
+  BLACKJACK
+  JACKPOT
+  CASE_OPENING
+  UPGRADE
+  BATTLE
+}
+
+enum GameResult {
+  WIN
+  LOSS
+  PUSH
+  BLACKJACK
+  JACKPOT
+  PLAYING
+  JOINED
+  CRASHED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  BET_WIN
+  BET_LOSS
+  REFUND
+  BONUS
+  RAKE
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  PROCESSING
+}
+
+enum PaymentMethod {
+  STEAM_TRADE
+  CRYPTO_BTC
+  CRYPTO_ETH
+  PAYPAL
+  STRIPE
+  BANK_TRANSFER
+  GIFT_CARD
+}
+
+enum JackpotStatus {
+  OPEN
+  DRAWING
+  COMPLETED
+  CANCELLED
+} 
