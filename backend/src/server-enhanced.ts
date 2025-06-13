@@ -18,6 +18,8 @@ import { setupWebSocket } from './sockets/websocket'
 import authRoutes from './routes/auth'
 import userRoutes from './routes/user'
 import gameRoutes from './routes/games'
+import jackpotRoutes from './routes/jackpot'
+import priceRoutes from './routes/prices'
 import chatRoutes from './routes/chat'
 import transactionRoutes from './routes/transactions'
 import inventoryRoutes from './routes/inventory'
@@ -133,6 +135,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/user', authMiddleware, userRoutes)
 app.use('/api/games', authMiddleware, gameRoutes)
+app.use('/api/games/jackpot', authMiddleware, jackpotRoutes)
+app.use('/api/prices', priceRoutes)
 app.use('/api/chat', authMiddleware, chatRoutes)
 app.use('/api/transactions', authMiddleware, transactionRoutes)
 app.use('/api/inventory', authMiddleware, inventoryRoutes)

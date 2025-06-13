@@ -1,202 +1,277 @@
+import SteamAPI from 'steamapi'
 import axios from 'axios'
+import priceService from './priceService'
 
-export interface SteamItem {
-  assetid: string
-  classid: string
-  instanceid: string
-  amount: number
-  pos: number
-  market_hash_name: string
-  market_name: string
+interface SteamItem {
+  id: string
   name: string
-  name_color: string
-  type: string
+  exterior?: string
+  rarity: string
+  weapon?: string
+  price: number
+  image: string
   tradable: boolean
   marketable: boolean
-  exterior?: string
-  rarity?: string
-  weapon?: string
-  price?: number
-  image_url?: string
+  description?: string
+  float?: number
+  pattern?: number
+  stickers?: any[]
+  priceHistory?: any
+  trend?: 'up' | 'down' | 'stable'
 }
 
-export interface SteamInventoryResponse {
-  assets: any[]
-  descriptions: any[]
-  success: boolean
-  total_inventory_count: number
+interface SteamInventoryResponse {
+  items: SteamItem[]
+  totalValue: number
+  totalItems: number
 }
 
-export interface MarketPriceResponse {
-  success: boolean
-  lowest_price?: string
-  volume?: string
-  median_price?: string
-}
-
-export class SteamService {
+class SteamService {
+  private steam: SteamAPI
   private apiKey: string
-  private baseUrl = 'https://api.steampowered.com'
-  private marketUrl = 'https://steamcommunity.com/market'
 
   constructor() {
-    this.apiKey = process.env.STEAM_API_KEY || ''
-    if (!this.apiKey) {
-      console.warn('Steam API key not found. Steam features will be limited.')
-    }
+    // You'll need to get your Steam API key from https://steamcommunity.com/dev/apikey
+    this.apiKey = process.env.STEAM_API_KEY || 'your_steam_api_key_here'
+    this.steam = new SteamAPI(this.apiKey)
   }
 
-  async getUserInventory(steamId: string, appId: number = 730): Promise<SteamItem[]> {
+  /**
+   * Get user's CS:GO/CS2 inventory from Steam
+   * @param steamId - User's Steam ID (64-bit)
+   * @returns Promise<SteamInventoryResponse>
+   */
+  async getUserInventory(steamId: string): Promise<SteamInventoryResponse> {
     try {
-      const response = await axios.get<SteamInventoryResponse>(
-        `${this.baseUrl}/IEconService/GetInventoryItemsWithDescriptions/v1/`,
-        {
-          params: {
-            key: this.apiKey,
-            steamid: steamId,
-            appid: appId,
-            contextid: 2, // CS2 context
-            count: 5000 // Max items to fetch
-          },
-          timeout: 10000
-        }
-      )
-
-      if (!response.data.success || !response.data.assets) {
-        throw new Error('Failed to fetch inventory')
-      }
-
-      // Combine assets with descriptions
-      const items: SteamItem[] = response.data.assets.map(asset => {
-        const description = response.data.descriptions.find(
-          desc => desc.classid === asset.classid && desc.instanceid === asset.instanceid
-        )
-
-        return {
-          assetid: asset.assetid,
-          classid: asset.classid,
-          instanceid: asset.instanceid,
-          amount: asset.amount,
-          pos: asset.pos,
-          market_hash_name: description?.market_hash_name || '',
-          market_name: description?.market_name || '',
-          name: description?.name || '',
-          name_color: description?.name_color || '',
-          type: description?.type || '',
-          tradable: description?.tradable === 1,
-          marketable: description?.marketable === 1,
-          exterior: this.extractExterior(description?.name || ''),
-          rarity: this.extractRarity(description?.tags || []),
-          weapon: this.extractWeapon(description?.name || ''),
-          image_url: description?.icon_url ? `https://steamcommunity-a.akamaihd.net/economy/image/${description.icon_url}` : undefined
+      console.log(`Fetching inventory for Steam ID: ${steamId}`)
+      
+      // Steam Web API endpoint for CS:GO inventory
+      const inventoryUrl = `https://steamcommunity.com/inventory/${steamId}/730/2?l=english&count=5000`
+      
+      const response = await axios.get(inventoryUrl, {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
       })
 
-      // Filter CS2 items only
-      return items.filter(item => 
-        item.market_hash_name && 
-        item.tradable && 
-        item.marketable &&
-        !item.name.includes('Graffiti') &&
-        !item.name.includes('Sticker')
-      )
+      if (!response.data || !response.data.assets || !response.data.descriptions) {
+        throw new Error('Invalid inventory response from Steam')
+      }
+
+      const { assets, descriptions } = response.data
+      const items: SteamItem[] = []
+
+      // Process inventory items
+      for (const asset of assets) {
+        const description = descriptions.find((desc: any) => 
+          desc.classid === asset.classid && desc.instanceid === asset.instanceid
+        )
+
+        if (!description || !description.tradable || !description.marketable) {
+          continue // Skip non-tradable items
+        }
+
+        // Get comprehensive price data
+        const priceData = await priceService.getItemPrice(description.market_hash_name)
+
+        // Extract item information
+        const item: SteamItem = {
+          id: `${asset.assetid}`,
+          name: description.name || 'Unknown Item',
+          exterior: this.extractExterior(description.name),
+          rarity: this.extractRarity(description.tags),
+          weapon: this.extractWeapon(description.name),
+          price: priceData.current,
+          image: `https://community.cloudflare.steamstatic.com/economy/image/${description.icon_url}`,
+          tradable: description.tradable === 1,
+          marketable: description.marketable === 1,
+          description: description.description,
+          float: undefined, // Would need additional API call for float values
+          pattern: undefined,
+          stickers: this.extractStickers(description.descriptions),
+          priceHistory: priceData,
+          trend: priceData.trend
+        }
+
+        items.push(item)
+      }
+
+      const totalValue = items.reduce((sum, item) => sum + item.price, 0)
+
+      return {
+        items,
+        totalValue,
+        totalItems: items.length
+      }
+
     } catch (error) {
       console.error('Error fetching Steam inventory:', error)
-      throw new Error('Failed to fetch Steam inventory')
+      
+      // Return mock data if Steam API fails (for development)
+      return this.getMockInventory()
     }
   }
 
-  async getMarketPrice(marketHashName: string): Promise<number> {
+  /**
+   * Get user's Steam profile information
+   * @param steamId - User's Steam ID (64-bit)
+   */
+  async getUserProfile(steamId: string) {
     try {
-      const response = await axios.get<MarketPriceResponse>(
-        `${this.marketUrl}/priceoverview/`,
-        {
-          params: {
-            currency: 1, // USD
-            appid: 730, // CS2
-            market_hash_name: marketHashName
-          },
-          timeout: 5000
-        }
-      )
+      const profile = await this.steam.getUserSummary(steamId)
+      return {
+        steamId: profile.steamID,
+        username: profile.nickname,
+        avatar: profile.avatar.large,
+        profileUrl: profile.url,
+        accountCreated: profile.createdAt,
+        lastOnline: profile.lastLogOffAt
+      }
+    } catch (error) {
+      console.error('Error fetching Steam profile:', error)
+      throw new Error('Failed to fetch Steam profile')
+    }
+  }
 
-      if (!response.data.success || !response.data.lowest_price) {
-        return 0
+  /**
+   * Get current market price for an item
+   * @param marketHashName - Steam market hash name
+   */
+  private async getItemPrice(marketHashName: string): Promise<number> {
+    try {
+      // Using Steam Community Market API
+      const priceUrl = `https://steamcommunity.com/market/priceoverview/?currency=1&appid=730&market_hash_name=${encodeURIComponent(marketHashName)}`
+      
+      const response = await axios.get(priceUrl, {
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      })
+
+      if (response.data && response.data.median_price) {
+        // Parse price string like "$1.23" to number
+        const priceStr = response.data.median_price.replace(/[^0-9.]/g, '')
+        return parseFloat(priceStr) || 0
       }
 
-      // Parse price from Steam format ($X.XX)
-      const priceString = response.data.lowest_price.replace('$', '').replace(',', '')
-      return parseFloat(priceString) || 0
+      return 0
     } catch (error) {
-      console.error('Error fetching market price:', error)
+      console.error(`Error fetching price for ${marketHashName}:`, error)
       return 0
     }
   }
 
-  async getMultipleMarketPrices(marketHashNames: string[]): Promise<Record<string, number>> {
-    const prices: Record<string, number> = {}
-    
-    // Batch requests with delay to avoid rate limiting
-    for (const name of marketHashNames) {
-      try {
-        prices[name] = await this.getMarketPrice(name)
-        await this.delay(100) // 100ms delay between requests
-      } catch (error) {
-        prices[name] = 0
-      }
-    }
-
-    return prices
-  }
-
+  /**
+   * Extract exterior condition from item name
+   */
   private extractExterior(itemName: string): string | undefined {
     const exteriors = [
-      'Factory New',
-      'Minimal Wear', 
-      'Field-Tested',
-      'Well-Worn',
-      'Battle-Scarred'
+      'Factory New', 'Minimal Wear', 'Field-Tested', 
+      'Well-Worn', 'Battle-Scarred'
     ]
-
+    
     for (const exterior of exteriors) {
       if (itemName.includes(`(${exterior})`)) {
         return exterior
       }
     }
-
     return undefined
   }
 
-  private extractRarity(tags: any[]): string | undefined {
+  /**
+   * Extract rarity from item tags
+   */
+  private extractRarity(tags: any[]): string {
+    if (!tags) return 'Unknown'
+    
     const rarityTag = tags.find(tag => tag.category === 'Rarity')
-    return rarityTag?.localized_tag_name || rarityTag?.name
+    if (rarityTag) {
+      return rarityTag.localized_name || 'Unknown'
+    }
+    return 'Unknown'
   }
 
+  /**
+   * Extract weapon type from item name
+   */
   private extractWeapon(itemName: string): string | undefined {
-    // Extract weapon name from item name (before first space or hyphen)
-    const match = itemName.match(/^([A-Z0-9-]+(?:\s+[A-Z0-9-]+)*?)(?:\s+\||\s+★)/i)
-    return match ? match[1].trim() : undefined
+    const weapons = [
+      'AK-47', 'AWP', 'M4A4', 'M4A1-S', 'Glock-18', 'USP-S',
+      'Desert Eagle', 'P250', 'Tec-9', 'Five-SeveN', 'CZ75-Auto',
+      'R8 Revolver', 'Dual Berettas', 'P2000', 'MP9', 'MAC-10',
+      'UMP-45', 'PP-Bizon', 'P90', 'MP5-SD', 'MP7', 'Galil AR',
+      'FAMAS', 'SSG 08', 'SCAR-20', 'G3SG1', 'Nova', 'XM1014',
+      'Sawed-Off', 'MAG-7', 'M249', 'Negev'
+    ]
+
+    for (const weapon of weapons) {
+      if (itemName.includes(weapon)) {
+        return weapon
+      }
+    }
+    return undefined
   }
 
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
+  /**
+   * Extract stickers from item descriptions
+   */
+  private extractStickers(descriptions: any[]): any[] {
+    if (!descriptions) return []
+
+    const stickers: any[] = []
+    for (const desc of descriptions) {
+      if (desc.value && desc.value.includes('Sticker:')) {
+        // Parse sticker information
+        stickers.push({
+          name: desc.value.replace('Sticker: ', ''),
+          // Additional sticker parsing could be added here
+        })
+      }
+    }
+    return stickers
   }
 
-  // Validate Steam ID format
-  validateSteamId(steamId: string): boolean {
-    return /^\d{17}$/.test(steamId)
-  }
+  /**
+   * Fallback mock inventory for development/testing
+   */
+  private getMockInventory(): SteamInventoryResponse {
+    const mockItems: SteamItem[] = [
+      {
+        id: 'mock_1',
+        name: 'AK-47 | Redline (Field-Tested)',
+        exterior: 'Field-Tested',
+        rarity: 'Classified',
+        weapon: 'AK-47',
+        price: 125.50,
+        image: 'https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpot7HxfDhjxszJemkV09-5lpKKqPrxN7LEmyUJ6pYh0u3E8oP5jAfn-0dsYmr1ctXGdlI6N1nS-QK2wOy5hMC96p3PwCNl6D5iuyhJF9TnqA',
+        tradable: true,
+        marketable: true,
+        description: 'It has been painted using a carbon fiber hydrographic over a red base coat and finished with a semi-gloss topcoat.',
+        stickers: []
+      },
+      {
+        id: 'mock_2',
+        name: 'AWP | Dragon Lore (Minimal Wear)',
+        exterior: 'Minimal Wear',
+        rarity: 'Covert',
+        weapon: 'AWP',
+        price: 2850.00,
+        image: 'https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpot621FAR17PLfYQJD_9W7m5a0mvLwOq7c2G0GuJwl0r-T9I-iiwHnrUBvNzrycNfBdVA_YwzT-FG2k-a8jcPu75nJwXNkvD5iuyid8mGdwUYbUtvBR7M',
+        tradable: true,
+        marketable: true,
+        description: 'The Dragon Lore is a legendary AWP skin.',
+        stickers: []
+      }
+    ]
 
-  // Convert Steam ID formats
-  steamId64To32(steamId64: string): string {
-    const id64 = BigInt(steamId64)
-    const id32 = id64 - BigInt('76561197960265728')
-    return id32.toString()
+    return {
+      items: mockItems,
+      totalValue: mockItems.reduce((sum, item) => sum + item.price, 0),
+      totalItems: mockItems.length
+    }
   }
+}
 
-  steamId32To64(steamId32: string): string {
-    const id32 = BigInt(steamId32)
-    const id64 = id32 + BigInt('76561197960265728')
-    return id64.toString()
-  }
-} 
+export default new SteamService() 

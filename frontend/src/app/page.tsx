@@ -160,18 +160,20 @@ const HomePage = () => {
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
               <Link
+                href="/login"
+                className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25 flex items-center space-x-2"
+              >
+                <PlayIcon className="w-5 h-5" />
+                <span>Login with Steam</span>
+                <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
                 href="/coinflip"
                 className="group bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25 flex items-center space-x-2"
               >
                 <PlayIcon className="w-5 h-5" />
-                <span>Start Playing</span>
+                <span>Play Demo</span>
                 <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                href="/achievements"
-                className="bg-gray-800/50 hover:bg-gray-700/50 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 border border-gray-700 hover:border-gray-600 backdrop-blur-sm"
-              >
-                View Achievements
               </Link>
             </motion.div>
           </div>
@@ -343,16 +345,22 @@ const HomePage = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
+                href="/login"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25"
+              >
+                Login with Steam
+              </Link>
+              <Link
+                href="/inventory"
+                className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25"
+              >
+                View Inventory
+              </Link>
+              <Link
                 href="/coinflip"
                 className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25"
               >
-                Start Playing Now
-              </Link>
-              <Link
-                href="/deposit"
-                className="bg-gray-800/50 hover:bg-gray-700/50 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 border border-gray-700 hover:border-gray-600"
-              >
-                Deposit Skins
+                Play Demo
               </Link>
             </div>
           </motion.div>
