@@ -3,6 +3,7 @@ import cors from 'cors'
 import axios from 'axios'
 import crypto from 'crypto'
 import { v4 as uuidv4 } from 'uuid'
+import tradeBotRoutes from './routes/tradeBot'
 
 const app = express()
 const PORT = 3001
@@ -728,6 +729,9 @@ app.get('/api/stats', (req, res) => {
     }
   })
 })
+
+// Trade Bot Routes
+app.use('/api/trade-bot', tradeBotRoutes)
 
 // Error handling
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

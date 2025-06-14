@@ -2,9 +2,13 @@ import express from 'express'
 import cors from 'cors'
 import axios from 'axios'
 import crypto from 'crypto'
+import cookieParser from 'cookie-parser'
+import passport from 'passport'
+import session from 'express-session'
 
 // Import auth routes
-const authRoutes = require('./routes/auth')
+import authRoutes from './routes/auth'
+// import tradeBotRoutes from './routes/tradeBot' // Temporarily disabled due to Steam API key requirement
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -15,6 +19,43 @@ const FRONTEND_URL = 'http://localhost:3003'
 const STEAM_OPENID_URL = 'https://steamcommunity.com/openid/login'
 const STEAM_API_URL = 'https://api.steampowered.com'
 
+// Initialize Passport Steam Strategy (simplified for minimal server)
+import { Strategy as SteamStrategy } from 'passport-steam'
+
+passport.use(new SteamStrategy({
+  returnURL: `http://localhost:${PORT}/api/auth/steam/return`,
+  realm: `http://localhost:${PORT}/`,
+  apiKey: process.env.STEAM_API_KEY || '9D0FC6D133693B6F6FD1A71935254257'
+}, async (identifier: string, profile: any, done: Function) => {
+  try {
+    const steamId = identifier.replace('https://steamcommunity.com/openid/id/', '')
+    
+    // Create user object (simplified - no database)
+    const user = {
+      id: `user_${steamId}`,
+      steamId,
+      username: profile.displayName || `User${steamId.slice(-8)}`,
+      avatar: profile.photos?.[2]?.value || profile.photos?.[1]?.value || profile.photos?.[0]?.value || '',
+      profileUrl: profile._json?.profileurl || '',
+      lastLoginAt: new Date()
+    }
+    
+    console.log('✅ Steam authentication successful:', user.username)
+    return done(null, user)
+  } catch (error) {
+    console.error('❌ Steam authentication error:', error)
+    return done(error)
+  }
+}))
+
+passport.serializeUser((user: any, done) => {
+  done(null, user)
+})
+
+passport.deserializeUser((user: any, done) => {
+  done(null, user)
+})
+
 // Middleware
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3003'],
@@ -22,10 +63,26 @@ app.use(cors({
 }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+app.use(cookieParser())
+
+// Session middleware for Passport
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'cs2-gambling-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // Set to true in production with HTTPS
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}))
+
+// Initialize Passport
+app.use(passport.initialize())
+app.use(passport.session())
 
 // Mount auth routes
 app.use('/api/auth', authRoutes)
-app.use('/api/payments', require('./routes/payments'))
+// app.use('/api/trade-bot', tradeBotRoutes) // Temporarily disabled due to Steam API key requirement
 
 // User profile routes (compatible with existing frontend)
 app.get('/api/user/profile/:steamId', async (req, res) => {
@@ -103,22 +160,50 @@ app.get('/api/steam-auth/callback', async (req, res) => {
       if (steamId) {
         console.log('Steam authentication successful for Steam ID:', steamId)
         
-        // Get Steam profile
-        const profileResponse = await axios.get(`${STEAM_SERVER_URL}/api/steam/profile/${steamId}`)
-        
-        if (profileResponse.data.success) {
-          const profile = profileResponse.data.profile
+        try {
+          // Try to get Steam profile, but don't fail if it doesn't work
+          const profileResponse = await axios.get(`${STEAM_SERVER_URL}/api/steam/profile/${steamId}`, {
+            timeout: 5000
+          })
           
-          // Create user object
+          if (profileResponse.data.success) {
+            const profile = profileResponse.data.profile
+            
+            // Create user object with full profile data
+            const user = {
+              id: `user_${profile.steamid}`,
+              steamId: profile.steamid,
+              username: profile.personaname,
+              avatar: profile.avatarfull,
+              profileUrl: profile.profileurl,
+              balance: 1000.00,
+              level: 1,
+              isOnline: profile.personastate === 1,
+              lastLogin: new Date(),
+              createdAt: new Date()
+            }
+            
+            // Generate a simple session token
+            const sessionToken = crypto.randomBytes(32).toString('hex')
+            
+            const userData = encodeURIComponent(JSON.stringify(user))
+            res.redirect(`${FRONTEND_URL}/profile?user=${userData}&token=${sessionToken}`)
+          } else {
+            throw new Error('Profile API returned error')
+          }
+        } catch (profileError) {
+          console.log('Profile fetch failed, using basic Steam ID data:', profileError.message)
+          
+          // Create basic user object with just Steam ID
           const user = {
-            id: `user_${profile.steamid}`,
-            steamId: profile.steamid,
-            username: profile.personaname,
-            avatar: profile.avatarfull,
-            profileUrl: profile.profileurl,
+            id: `user_${steamId}`,
+            steamId: steamId,
+            username: `Player${steamId.slice(-8)}`,
+            avatar: '',
+            profileUrl: `https://steamcommunity.com/profiles/${steamId}`,
             balance: 1000.00,
             level: 1,
-            isOnline: profile.personastate === 1,
+            isOnline: true,
             lastLogin: new Date(),
             createdAt: new Date()
           }
@@ -126,13 +211,8 @@ app.get('/api/steam-auth/callback', async (req, res) => {
           // Generate a simple session token
           const sessionToken = crypto.randomBytes(32).toString('hex')
           
-          // In a real app, you'd store this in a database or Redis
-          // For now, we'll just redirect with the user data
           const userData = encodeURIComponent(JSON.stringify(user))
-          
-          res.redirect(`${FRONTEND_URL}/login/success?user=${userData}&token=${sessionToken}`)
-        } else {
-          res.redirect(`${FRONTEND_URL}/login/error?message=Failed to fetch Steam profile`)
+          res.redirect(`${FRONTEND_URL}/profile?user=${userData}&token=${sessionToken}`)
         }
       } else {
         res.redirect(`${FRONTEND_URL}/login/error?message=Invalid Steam ID`)
@@ -179,6 +259,7 @@ app.get('/api/inventory', async (req, res) => {
     
     if (response.data.success) {
       res.json({
+        success: true,
         items: response.data.items,
         totalValue: response.data.totalValue,
         totalItems: response.data.totalItems,
@@ -191,6 +272,40 @@ app.get('/api/inventory', async (req, res) => {
   } catch (error) {
     console.error('Error fetching inventory:', error)
     res.status(500).json({ error: 'Failed to fetch inventory' })
+  }
+})
+
+// Get Steam inventory (alternative route for frontend compatibility)
+app.get('/api/steam-auth/inventory/:steamId', async (req, res) => {
+  try {
+    const { steamId } = req.params
+    
+    console.log(`🎒 Fetching CS2 inventory for Steam ID: ${steamId}`)
+    
+    const response = await axios.get(`${STEAM_SERVER_URL}/api/steam/inventory/${steamId}`)
+    
+    if (response.data.success) {
+      res.json({
+        success: true,
+        items: response.data.items,
+        totalValue: response.data.totalValue,
+        totalItems: response.data.totalItems,
+        steamId: response.data.steamId,
+        lastUpdated: new Date()
+      })
+    } else {
+      res.status(404).json({ 
+        success: false,
+        error: 'Failed to fetch inventory or inventory is private',
+        message: 'Make sure your Steam inventory is set to public'
+      })
+    }
+  } catch (error) {
+    console.error('Error fetching inventory:', error)
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch inventory' 
+    })
   }
 })
 

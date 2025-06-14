@@ -47,6 +47,7 @@ const Navbar = () => {
     { name: 'Jackpot', href: '/jackpot', icon: TrophyIcon },
     { name: 'Crash', href: '/crash', icon: ChartBarIcon },
     { name: 'Roulette', href: '/roulette', icon: StarIcon },
+    { name: 'Trade Bot', href: '/trade-bot', icon: CogIcon },
     { name: 'Cases', href: '/cases', icon: StarIcon },
     { name: 'Achievements', href: '/achievements', icon: StarIcon },
     { name: 'Leaderboard', href: '/leaderboard', icon: TrophyIcon },
