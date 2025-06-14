@@ -20,100 +20,100 @@ export enum UserStatus {
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id!: string
 
-  @Column({ unique: true })
-  steamId: string
+  @Column({ type: 'varchar', unique: true })
+  steamId!: string
 
-  @Column()
-  username: string
+  @Column({ type: 'varchar' })
+  username!: string
 
-  @Column()
-  avatar: string
+  @Column({ type: 'varchar' })
+  avatar!: string
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  balance: number
+  balance!: number
 
   @Column({ type: 'decimal', precision: 15, scale: 2, default: 0 })
-  totalWagered: number
+  totalWagered!: number
 
   @Column({ type: 'decimal', precision: 15, scale: 2, default: 0 })
-  totalWon: number
+  totalWon!: number
 
-  @Column({ default: 0 })
-  gamesPlayed: number
+  @Column({ type: 'int', default: 0 })
+  gamesPlayed!: number
 
-  @Column({ default: 1 })
-  level: number
+  @Column({ type: 'int', default: 1 })
+  level!: number
 
-  @Column({ default: 0 })
-  experience: number
+  @Column({ type: 'int', default: 0 })
+  experience!: number
 
   @Column({
     type: 'enum',
     enum: UserRole,
     default: UserRole.USER
   })
-  role: UserRole
+  role!: UserRole
 
   @Column({
     type: 'enum',
     enum: UserStatus,
     default: UserStatus.ACTIVE
   })
-  status: UserStatus
+  status!: UserStatus
 
-  @Column({ nullable: true })
-  email: string
+  @Column({ type: 'varchar', nullable: true })
+  email!: string
 
-  @Column({ default: false })
-  twoFactorEnabled: boolean
+  @Column({ type: 'boolean', default: false })
+  twoFactorEnabled!: boolean
 
-  @Column({ nullable: true })
-  twoFactorSecret: string
+  @Column({ type: 'varchar', nullable: true })
+  twoFactorSecret!: string
 
-  @Column({ nullable: true })
-  lastLoginIp: string
+  @Column({ type: 'varchar', nullable: true })
+  lastLoginIp!: string
 
-  @Column({ nullable: true })
-  lastLoginAt: Date
+  @Column({ type: 'timestamp', nullable: true })
+  lastLoginAt!: Date
 
-  @Column({ default: 0 })
-  loginCount: number
-
-  @Column({ type: 'jsonb', default: {} })
-  preferences: Record<string, any>
+  @Column({ type: 'int', default: 0 })
+  loginCount!: number
 
   @Column({ type: 'jsonb', default: {} })
-  statistics: Record<string, any>
+  preferences!: Record<string, any>
 
-  @Column({ nullable: true })
-  referredBy: string
+  @Column({ type: 'jsonb', default: {} })
+  statistics!: Record<string, any>
 
-  @Column({ default: 0 })
-  referralCount: number
+  @Column({ type: 'varchar', nullable: true })
+  referredBy!: string
+
+  @Column({ type: 'int', default: 0 })
+  referralCount!: number
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  referralEarnings: number
+  referralEarnings!: number
 
   @CreateDateColumn()
-  createdAt: Date
+  createdAt!: Date
 
   @UpdateDateColumn()
-  updatedAt: Date
+  updatedAt!: Date
 
   // Relations
   @OneToMany(() => Game, game => game.user)
-  games: Game[]
+  games!: Game[]
 
   @OneToMany(() => Transaction, transaction => transaction.user)
-  transactions: Transaction[]
+  transactions!: Transaction[]
 
   @OneToMany(() => ChatMessage, message => message.user)
-  chatMessages: ChatMessage[]
+  chatMessages!: ChatMessage[]
 
   @OneToMany(() => UserAchievement, userAchievement => userAchievement.user)
-  achievements: UserAchievement[]
+  achievements!: UserAchievement[]
 
   // Virtual properties
   get winRate(): number {

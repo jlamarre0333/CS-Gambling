@@ -21,60 +21,60 @@ export enum AchievementRarity {
 @Entity('achievements')
 export class Achievement {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id!: string
 
-  @Column({ unique: true })
-  key: string
+  @Column({ type: 'varchar', unique: true })
+  key!: string
 
-  @Column()
-  name: string
+  @Column({ type: 'varchar' })
+  name!: string
 
   @Column({ type: 'text' })
-  description: string
+  description!: string
 
   @Column({
     type: 'enum',
     enum: AchievementCategory
   })
-  category: AchievementCategory
+  category!: AchievementCategory
 
   @Column({
     type: 'enum',
     enum: AchievementRarity,
     default: AchievementRarity.COMMON
   })
-  rarity: AchievementRarity
+  rarity!: AchievementRarity
 
-  @Column()
-  icon: string
+  @Column({ type: 'varchar' })
+  icon!: string
 
-  @Column({ default: 0 })
-  points: number
+  @Column({ type: 'int', default: 0 })
+  points!: number
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  rewardAmount: number
+  rewardAmount!: number
 
   @Column({ type: 'jsonb', default: {} })
-  requirements: Record<string, any>
+  requirements!: Record<string, any>
 
   @Column({ type: 'jsonb', default: {} })
-  metadata: Record<string, any>
+  metadata!: Record<string, any>
 
-  @Column({ default: true })
-  isActive: boolean
+  @Column({ type: 'boolean', default: true })
+  isActive!: boolean
 
-  @Column({ default: false })
-  isSecret: boolean
+  @Column({ type: 'boolean', default: false })
+  isSecret!: boolean
 
   @CreateDateColumn()
-  createdAt: Date
+  createdAt!: Date
 
   @UpdateDateColumn()
-  updatedAt: Date
+  updatedAt!: Date
 
   // Relations
   @OneToMany(() => UserAchievement, userAchievement => userAchievement.achievement)
-  userAchievements: UserAchievement[]
+  userAchievements!: UserAchievement[]
 
   // Virtual properties
   get difficultyScore(): number {

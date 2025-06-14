@@ -6,6 +6,10 @@ import { useSound } from '@/hooks/useSound'
 import { useUser } from '@/contexts/UserContext'
 import { api } from '@/lib/api'
 import { motion } from 'framer-motion'
+import EnhancedButton from '@/components/ui/EnhancedButton'
+import { EnhancedCard } from '@/components/ui/EnhancedCard'
+import { EnhancedInput } from '@/components/ui/EnhancedInput'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
 const CoinFlipPage = () => {
   const { gameActions } = useSound()
@@ -17,6 +21,7 @@ const CoinFlipPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [gameHistory, setGameHistory] = useState<any[]>([])
   const [showResult, setShowResult] = useState(false)
+  const [showToast, setShowToast] = useState<{type: 'success' | 'error', message: string} | null>(null)
 
   // Load user's game history
   useEffect(() => {
@@ -28,7 +33,7 @@ const CoinFlipPage = () => {
   const loadGameHistory = async () => {
     if (!user) return
     try {
-      const response = await api.getGameHistory(user.id)
+      const response = await api.getGameHistory(user.id) as any
       if (response.success) {
         const coinflipGames = response.games
           .filter((game: any) => game.gameType === 'coinflip')
@@ -106,14 +111,20 @@ const CoinFlipPage = () => {
       // Place bet on backend
       const response = await api.placeBet(user.id, 'coinflip', betAmount, {
         playerChoice: selectedSide
-      })
+      }) as any
       
       if (response.success) {
         const gameResult = response.game.result === 'win' ? selectedSide : (selectedSide === 'heads' ? 'tails' : 'heads')
         setResult(gameResult)
         updateUser(response.user)
         
-        if (response.game.result === 'win') {
+        const won = response.game.result === 'win'
+        setShowToast({
+          type: won ? 'success' : 'error',
+          message: won ? `🎉 You won $${betAmount * 2}!` : `💔 You lost $${betAmount}`
+        })
+        
+        if (won) {
           gameActions.winBig()
         } else {
           gameActions.lose()
@@ -132,6 +143,10 @@ const CoinFlipPage = () => {
     } catch (error) {
       console.error('Error flipping coin:', error)
       setIsFlipping(false)
+      setShowToast({
+        type: 'error',
+        message: 'Failed to flip coin. Please try again.'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -141,333 +156,273 @@ const CoinFlipPage = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Please log in to play Coinflip</h2>
-          <p className="text-gray-400">You need to be logged in to place bets and track your progress.</p>
-          <div className="mt-6">
-            <a href="/test-backend" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white flex items-center justify-center p-4">
+        <EnhancedCard variant="glow" className="text-center max-w-md w-full">
+          <div className="p-8">
+            <div className="text-6xl mb-4">🪙</div>
+            <h2 className="text-2xl font-bold mb-4">Please log in to play Coinflip</h2>
+            <p className="text-gray-400 mb-6">You need to be logged in to place bets and track your progress.</p>
+            <EnhancedButton 
+              variant="primary" 
+              size="lg"
+              onClick={() => { window.location.href = '/test-backend' }}
+              className="w-full"
+            >
               Go to Login Page
-            </a>
+            </EnhancedButton>
           </div>
-        </div>
+        </EnhancedCard>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl md:text-6xl font-bold mb-4">
             🪙 <span className="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">Coin Flip</span>
           </h1>
-          <p className="text-xl text-gray-300">
+          <p className="text-xl text-gray-300 mb-6">
             Choose heads or tails and double your money!
           </p>
-          <div className="mt-4 flex items-center justify-center space-x-6">
-            <div className="text-center">
-              <div className="text-sm text-gray-400">Balance</div>
-              <div className="text-xl font-bold text-green-400">${user.balance.toFixed(2)}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-gray-400">Level</div>
-              <div className="text-xl font-bold text-blue-400">{user.level}</div>
-            </div>
+          
+          {/* User Stats */}
+          <div className="flex flex-wrap justify-center gap-4 mb-8">
+            <EnhancedCard variant="stats" className="px-6 py-3">
+              <div className="text-center">
+                <div className="text-sm text-gray-400">Balance</div>
+                <div className="text-xl font-bold text-green-400">${user.balance.toFixed(2)}</div>
+              </div>
+            </EnhancedCard>
+            <EnhancedCard variant="stats" className="px-6 py-3">
+              <div className="text-center">
+                <div className="text-sm text-gray-400">Level</div>
+                <div className="text-xl font-bold text-blue-400">{user.level}</div>
+              </div>
+            </EnhancedCard>
+            {user.stats && (
+              <>
+                <EnhancedCard variant="stats" className="px-6 py-3">
+                  <div className="text-center">
+                    <div className="text-sm text-gray-400">Win Rate</div>
+                    <div className="text-xl font-bold text-green-400">{user.stats.wins}/{user.stats.totalGames}</div>
+                  </div>
+                </EnhancedCard>
+                <EnhancedCard variant="stats" className="px-6 py-3">
+                  <div className="text-center">
+                    <div className="text-sm text-gray-400">Total Won</div>
+                    <div className="text-xl font-bold text-blue-400">${user.stats.totalWon.toFixed(0)}</div>
+                  </div>
+                </EnhancedCard>
+              </>
+            )}
           </div>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Game Area */}
           <div className="lg:col-span-2 space-y-6">
-            {/* User Stats */}
-            {user.stats && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="grid grid-cols-2 md:grid-cols-4 gap-4"
-              >
-                <div className="gaming-card p-4 text-center">
-                  <div className="text-2xl font-bold text-green-400">{user.stats.wins}/{user.stats.totalGames}</div>
-                  <div className="text-sm text-gray-400">Win Rate</div>
-                </div>
-                <div className="gaming-card p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-400">${user.stats.totalWon.toFixed(0)}</div>
-                  <div className="text-sm text-gray-400">Total Won</div>
-                </div>
-                <div className="gaming-card p-4 text-center">
-                  <div className="text-2xl font-bold text-orange-400">
-                    {user.stats.totalGames > 0 ? ((user.stats.wins / user.stats.totalGames) * 100).toFixed(1) : 0}%
-                  </div>
-                  <div className="text-sm text-gray-400">Win Percentage</div>
-                </div>
-                <div className="gaming-card p-4 text-center">
-                  <div className="text-2xl font-bold text-purple-400">${user.stats.totalWagered.toFixed(0)}</div>
-                  <div className="text-sm text-gray-400">Total Wagered</div>
-                </div>
-              </motion.div>
-            )}
-
             {/* Coin Flip Game */}
-            <div className="gaming-card p-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Flip the Coin</h2>
-              
-              {/* Coin Animation */}
-              <div className="text-center mb-8">
-                <motion.div
-                  animate={isFlipping ? { rotateY: [0, 180, 360, 540, 720] } : {}}
-                  transition={{ duration: 2, ease: "easeInOut" }}
-                  className="inline-block text-8xl mb-4"
-                >
-                  {showResult ? (result === 'heads' ? '🟡' : '⚪') : '🪙'}
-                </motion.div>
-                
-                {showResult && (
+            <EnhancedCard variant="game" className="p-8">
+              <div className="text-center">
+                {/* Coin Animation */}
+                <div className="mb-8">
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center"
+                    className={`w-32 h-32 mx-auto rounded-full border-4 border-yellow-500 flex items-center justify-center text-4xl font-bold ${
+                      isFlipping ? 'animate-spin' : ''
+                    } ${result === 'heads' ? 'bg-yellow-500 text-black' : result === 'tails' ? 'bg-gray-700 text-white' : 'bg-gradient-to-br from-yellow-500 to-gray-700'}`}
+                    animate={isFlipping ? { rotateY: 360 } : {}}
+                    transition={{ duration: 0.5, repeat: isFlipping ? Infinity : 0 }}
                   >
-                    <div className="text-2xl font-bold mb-2">
-                      {result === selectedSide ? (
-                        <span className="text-green-400">🎉 YOU WON!</span>
-                      ) : (
-                        <span className="text-red-400">💔 YOU LOST!</span>
-                      )}
-                    </div>
-                    <div className="text-lg text-gray-300">
-                      Result: {result?.toUpperCase()}
-                    </div>
-                    {result === selectedSide && (
-                      <div className="text-lg text-green-400 font-bold">
-                        Won: ${(betAmount * 2).toFixed(2)}
-                      </div>
+                    {isFlipping ? (
+                      <LoadingSpinner variant="casino" size="lg" />
+                    ) : result ? (
+                      result === 'heads' ? '👑' : '🦅'
+                    ) : (
+                      '🪙'
                     )}
                   </motion.div>
-                )}
-              </div>
-              
-              {/* Coin Selection */}
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                <button
-                  onClick={() => {
-                    if (!isFlipping) {
-                      gameActions.buttonClick()
-                      setSelectedSide('heads')
-                    }
-                  }}
-                  disabled={isFlipping}
-                  className={`
-                    p-8 rounded-lg border-2 transition-all duration-300 group disabled:opacity-50
-                    ${selectedSide === 'heads' 
-                      ? 'border-yellow-400 bg-yellow-400/10 shadow-lg shadow-yellow-400/20' 
-                      : 'border-gray-600 bg-gray-800 hover:border-yellow-400/50'
-                    }
-                  `}
-                >
-                  <div className="text-center">
-                    <div className="text-6xl mb-4 group-hover:animate-bounce">🟡</div>
-                    <div className="text-2xl font-bold text-white mb-2">HEADS</div>
-                    <div className="text-yellow-400 font-semibold">50% Chance</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (!isFlipping) {
-                      gameActions.buttonClick()
-                      setSelectedSide('tails')
-                    }
-                  }}
-                  disabled={isFlipping}
-                  className={`
-                    p-8 rounded-lg border-2 transition-all duration-300 group disabled:opacity-50
-                    ${selectedSide === 'tails' 
-                      ? 'border-gray-300 bg-gray-300/10 shadow-lg shadow-gray-300/20' 
-                      : 'border-gray-600 bg-gray-800 hover:border-gray-300/50'
-                    }
-                  `}
-                >
-                  <div className="text-center">
-                    <div className="text-6xl mb-4 group-hover:animate-bounce">⚪</div>
-                    <div className="text-2xl font-bold text-white mb-2">TAILS</div>
-                    <div className="text-gray-300 font-semibold">50% Chance</div>
-                  </div>
-                </button>
-              </div>
-
-              {/* Bet Amount */}
-              <div className="mb-6">
-                <label className="block text-sm text-gray-400 mb-2">Bet Amount</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">$</span>
-                  <input
-                    type="number"
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
-                    min="1"
-                    max={user.balance}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-8 pr-3 py-3 text-white focus:outline-none focus:border-yellow-500"
-                    disabled={isFlipping}
-                  />
-                </div>
-                
-                {/* Quick Amount Buttons */}
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {quickAmounts.map((amount) => (
-                    <button
-                      key={amount}
-                      onClick={() => setBetAmount(amount)}
-                      disabled={amount > user.balance || isFlipping}
-                      className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                        betAmount === amount
-                          ? 'bg-yellow-500 text-black'
-                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300 disabled:opacity-50'
-                      }`}
+                  
+                  {showResult && result && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="mt-4"
                     >
-                      ${amount}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setBetAmount(Math.floor(user.balance / 2))}
-                    disabled={isFlipping}
-                    className="px-3 py-1 rounded-lg text-sm bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
-                  >
-                    Half
-                  </button>
-                  <button
-                    onClick={() => setBetAmount(Math.floor(user.balance))}
-                    disabled={isFlipping}
-                    className="px-3 py-1 rounded-lg text-sm bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
-                  >
-                    Max
-                  </button>
+                      <div className={`text-2xl font-bold ${selectedSide === result ? 'text-green-400' : 'text-red-400'}`}>
+                        {selectedSide === result ? '🎉 YOU WON!' : '💔 YOU LOST!'}
+                      </div>
+                      <div className="text-lg text-gray-300 mt-2">
+                        Result: {result.toUpperCase()}
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
+
+                {/* Side Selection */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold mb-4">Choose Your Side</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <EnhancedButton
+                      variant={selectedSide === 'heads' ? 'primary' : 'secondary'}
+                      size="lg"
+                      onClick={() => setSelectedSide('heads')}
+                      disabled={isFlipping}
+                      className="h-20 flex flex-col items-center justify-center"
+                    >
+                      <div className="text-2xl mb-1">👑</div>
+                      <div className="font-bold">HEADS</div>
+                      <div className="text-sm opacity-80">2x Payout</div>
+                    </EnhancedButton>
+                    
+                    <EnhancedButton
+                      variant={selectedSide === 'tails' ? 'primary' : 'secondary'}
+                      size="lg"
+                      onClick={() => setSelectedSide('tails')}
+                      disabled={isFlipping}
+                      className="h-20 flex flex-col items-center justify-center"
+                    >
+                      <div className="text-2xl mb-1">🦅</div>
+                      <div className="font-bold">TAILS</div>
+                      <div className="text-sm opacity-80">2x Payout</div>
+                    </EnhancedButton>
+                  </div>
+                </div>
+
+                {/* Bet Amount */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold mb-4">Bet Amount</h3>
+                  <EnhancedInput
+                    type="number"
+                    value={betAmount.toString()}
+                    onChange={(value) => setBetAmount(Math.max(0, Number(value)))}
+                    disabled={isFlipping}
+                    placeholder="Enter bet amount"
+                    className="w-full mb-4"
+                  />
+                  
+                  {/* Quick bet buttons */}
+                  <div className="grid grid-cols-5 gap-2">
+                    {quickAmounts.map((amount) => (
+                      <EnhancedButton
+                        key={amount}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setBetAmount(Math.min(amount, user.balance))}
+                        disabled={isFlipping || amount > user.balance}
+                      >
+                        ${amount}
+                      </EnhancedButton>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Flip Button */}
+                <EnhancedButton
+                  variant="primary"
+                  size="xl"
+                  onClick={flipCoin}
+                  disabled={!selectedSide || !user || betAmount <= 0 || betAmount > user.balance || isFlipping || isLoading}
+                  loading={isLoading || isFlipping}
+                  className="w-full h-16 text-xl font-bold"
+                >
+                  {isLoading ? '🔄 Placing Bet...' : 
+                   isFlipping ? '🪙 Flipping...' :
+                   selectedSide && betAmount > 0 && betAmount <= user.balance ? 
+                     `🚀 Flip ${selectedSide.toUpperCase()} ($${betAmount})` : 
+                     'Select Side and Amount'
+                  }
+                </EnhancedButton>
               </div>
-
-              {/* Bet validation */}
-              {betAmount > user.balance && (
-                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <div className="text-sm text-red-400">
-                    ⚠️ Insufficient balance. Your balance is ${user.balance.toFixed(2)}
-                  </div>
-                </div>
-              )}
-
-              {betAmount > 0 && betAmount <= user.balance && selectedSide && (
-                <div className="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-                  <div className="text-sm text-green-400">
-                    💰 Potential winnings: ${(betAmount * 2).toFixed(2)}
-                  </div>
-                </div>
-              )}
-
-              {/* Flip Button */}
-              <button
-                onClick={flipCoin}
-                disabled={!selectedSide || betAmount <= 0 || betAmount > user.balance || isFlipping || isLoading}
-                className="w-full gaming-button text-lg py-4 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? '🔄 Placing Bet...' : 
-                 isFlipping ? '🪙 Flipping...' :
-                 selectedSide && betAmount > 0 && betAmount <= user.balance ? 
-                   `🚀 Flip ${selectedSide.toUpperCase()} ($${betAmount})` : 
-                   'Select Side and Bet Amount'
-                }
-              </button>
-            </div>
+            </EnhancedCard>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Recent Games */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="gaming-card p-6"
-            >
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <ClockIcon className="w-5 h-5 text-blue-400" />
-                Recent Games
-              </h3>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {gameHistory.length > 0 ? gameHistory.map((game, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 bg-gray-800 rounded-lg">
-                    <div>
-                      <div className="text-sm font-medium text-white">
-                        {game.playerChoice.toUpperCase()}
-                      </div>
-                      <div className="text-xs text-gray-400">{game.time}</div>
-                    </div>
-                    <div>
-                      <div className={`text-sm font-bold ${
-                        game.result === 'win' ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {game.result === 'win' ? '+' : '-'}${game.betAmount.toFixed(2)}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        ${game.betAmount.toFixed(2)} bet
-                      </div>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="text-center text-gray-400 py-8">
-                    <CubeIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No games yet</p>
-                    <p className="text-sm">Start flipping to see your history!</p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-
             {/* Active Battles */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="gaming-card p-6"
-            >
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <FireIcon className="w-5 h-5 text-orange-400" />
+            <EnhancedCard variant="default" className="p-6">
+              <h3 className="text-xl font-bold mb-4 flex items-center">
+                <FireIcon className="w-6 h-6 mr-2 text-orange-500" />
                 Active Battles
               </h3>
               <div className="space-y-3">
                 {activeBattles.map((battle) => (
-                  <div key={battle.id} className="p-4 bg-gray-800 rounded-lg">
+                  <div key={battle.id} className="bg-gray-800/50 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center space-x-2">
                         <span className="text-lg">{battle.avatar}</span>
-                        <span className="font-medium text-white">{battle.creator}</span>
+                        <span className="font-semibold">{battle.creator}</span>
                       </div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        battle.status === 'waiting' ? 'bg-blue-500/20 text-blue-400' :
-                        'bg-orange-500/20 text-orange-400'
+                      <span className="text-green-400 font-bold">{battle.totalValue}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Side: {battle.side}</span>
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        battle.status === 'waiting' ? 'bg-yellow-600' : 'bg-green-600'
                       }`}>
                         {battle.status === 'waiting' ? 'Waiting' : 'In Progress'}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-400">
-                        {battle.side.toUpperCase()} • {battle.totalValue}
-                      </span>
-                      {battle.status === 'waiting' && (
-                        <button className="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white rounded text-xs">
-                          Join
-                        </button>
-                      )}
-                    </div>
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </EnhancedCard>
+
+            {/* Recent Games */}
+            <EnhancedCard variant="default" className="p-6">
+              <h3 className="text-xl font-bold mb-4 flex items-center">
+                <ClockIcon className="w-6 h-6 mr-2 text-blue-500" />
+                Recent Games
+              </h3>
+              <div className="space-y-2">
+                {gameHistory.length > 0 ? (
+                  gameHistory.map((game) => (
+                    <div key={game.id} className="flex items-center justify-between py-2 border-b border-gray-700/50">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">{game.playerChoice === 'heads' ? '👑' : '🦅'}</span>
+                        <div>
+                          <div className="text-sm font-semibold">${game.betAmount}</div>
+                          <div className="text-xs text-gray-400">{game.time}</div>
+                        </div>
+                      </div>
+                      <div className={`text-sm font-bold ${game.result === 'win' ? 'text-green-400' : 'text-red-400'}`}>
+                        {game.result === 'win' ? `+$${game.winAmount}` : `-$${game.betAmount}`}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-400 py-4">
+                    No recent games
+                  </div>
+                )}
+              </div>
+            </EnhancedCard>
           </div>
         </div>
       </div>
+
+      {/* Toast Notifications */}
+      {showToast && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+          showToast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+        } text-white`}>
+          <div className="flex items-center justify-between">
+            <span>{showToast.message}</span>
+            <button 
+              onClick={() => setShowToast(null)}
+              className="ml-4 text-white hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -11,10 +11,15 @@ import {
   ChartBarIcon,
   TrophyIcon
 } from '@heroicons/react/24/outline';
+import EnhancedButton from '@/components/ui/EnhancedButton';
+import { EnhancedCard } from '@/components/ui/EnhancedCard';
+import { EnhancedInput } from '@/components/ui/EnhancedInput';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface Card {
   suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
   rank: string;
+  hidden?: boolean;
 }
 
 interface Hand {
@@ -98,6 +103,7 @@ export default function BlackjackPage() {
     blackjacks: 0,
     totalWinnings: 0
   });
+  const [showToast, setShowToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
   // Load user's game history
   useEffect(() => {
@@ -186,12 +192,20 @@ export default function BlackjackPage() {
         }));
         
         if (playerBlackjack) {
+          setShowToast({
+            type: 'success',
+            message: '🎉 BLACKJACK! You won!'
+          });
           setTimeout(() => loadGameHistory(), 1000);
         }
       }
     } catch (error) {
       console.error('Error dealing cards:', error);
       setGameState(prev => ({ ...prev, isLoading: false }));
+      setShowToast({
+        type: 'error',
+        message: 'Failed to deal cards. Please try again.'
+      });
     }
   };
 
@@ -201,34 +215,40 @@ export default function BlackjackPage() {
     setGameState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      // Add a card to player hand (simplified - would need full game state management)
-      const newCard = { 
-        suit: ['hearts', 'diamonds', 'clubs', 'spades'][Math.floor(Math.random() * 4)] as any,
-        rank: ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'][Math.floor(Math.random() * 13)]
-      };
+      const response = await api.placeBet(user.id, 'blackjack', gameState.currentBet, {
+        action: 'hit'
+      }) as any;
       
-      const newPlayerHand = createHandFromCards([...gameState.playerHand.cards, newCard]);
-      
-      setGameState(prev => ({
-        ...prev,
-        playerHand: newPlayerHand,
-        canHit: !newPlayerHand.isBust,
-        canStand: !newPlayerHand.isBust,
-        canDouble: false,
-        gamePhase: newPlayerHand.isBust ? 'game-over' : 'player-turn',
-        gameResult: newPlayerHand.isBust ? 'lose' : null,
-        isLoading: false
-      }));
-
-      if (newPlayerHand.isBust) {
-        // Process loss
-        setTimeout(() => {
-          loadGameHistory();
-        }, 1000);
+      if (response.success) {
+        const { playerCards, playerValue, playerBust } = response.game.gameData;
+        const playerHand = createHandFromCards(playerCards);
+        
+        setGameState(prev => ({
+          ...prev,
+          playerHand,
+          gamePhase: playerBust ? 'game-over' : 'player-turn',
+          gameResult: response.game.result,
+          canHit: !playerBust,
+          canStand: !playerBust,
+          canDouble: false,
+          isLoading: false
+        }));
+        
+        if (playerBust) {
+          setShowToast({
+            type: 'error',
+            message: '💥 BUST! You went over 21!'
+          });
+          setTimeout(() => loadGameHistory(), 1000);
+        }
       }
     } catch (error) {
       console.error('Error hitting:', error);
       setGameState(prev => ({ ...prev, isLoading: false }));
+      setShowToast({
+        type: 'error',
+        message: 'Failed to hit. Please try again.'
+      });
     }
   };
 
@@ -238,38 +258,45 @@ export default function BlackjackPage() {
     setGameState(prev => ({ ...prev, isLoading: true, gamePhase: 'dealer-turn' }));
     
     try {
-      // Let dealer play via API
-      const response = await api.placeBet(user.id, 'blackjack', 0, {
-        action: 'stand',
-        playerCards: gameState.playerHand.cards,
-        dealerCards: gameState.dealerHand.cards
+      const response = await api.placeBet(user.id, 'blackjack', gameState.currentBet, {
+        action: 'stand'
       }) as any;
       
       if (response.success) {
-        const { dealerCards, dealerValue, finalResult } = response.game.gameData;
-        
-        const finalDealerHand = createHandFromCards(dealerCards);
+        const { dealerCards, dealerValue, gameResult } = response.game.gameData;
+        const dealerHand = createHandFromCards(dealerCards);
         
         updateUser(response.user);
         
         setGameState(prev => ({
           ...prev,
-          dealerHand: finalDealerHand,
+          dealerHand,
           gamePhase: 'game-over',
-          gameResult: finalResult,
+          gameResult: response.game.result,
           canHit: false,
           canStand: false,
           canDouble: false,
           isLoading: false
         }));
         
-        setTimeout(() => {
-          loadGameHistory();
-        }, 2000);
+        const resultMessage = response.game.result === 'win' ? '🎉 You won!' :
+                             response.game.result === 'push' ? '🤝 Push! It\'s a tie!' :
+                             '😔 Dealer wins!';
+        
+        setShowToast({
+          type: response.game.result === 'win' ? 'success' : response.game.result === 'push' ? 'success' : 'error',
+          message: resultMessage
+        });
+        
+        setTimeout(() => loadGameHistory(), 1000);
       }
     } catch (error) {
       console.error('Error standing:', error);
       setGameState(prev => ({ ...prev, isLoading: false }));
+      setShowToast({
+        type: 'error',
+        message: 'Failed to stand. Please try again.'
+      });
     }
   };
 
@@ -289,40 +316,36 @@ export default function BlackjackPage() {
 
   const getCardDisplay = (card: Card & { hidden?: boolean }) => {
     if (card.hidden) {
-      return '🂠'; // Card back
+      return '🂠';
     }
     
-    const suitEmojis = {
+    const suitSymbols = {
       hearts: '♥️',
       diamonds: '♦️',
       clubs: '♣️',
       spades: '♠️'
     };
     
-    return `${card.rank}${suitEmojis[card.suit]}`;
+    return `${card.rank}${suitSymbols[card.suit]}`;
   };
 
   const getResultMessage = () => {
     switch (gameState.gameResult) {
-      case 'win': return '🎉 You Win!';
-      case 'lose': return '💔 You Lose';
-      case 'push': return '🤝 Push (Tie)';
-      case 'blackjack': return '🃏 Blackjack!';
+      case 'blackjack': return '🎉 BLACKJACK!';
+      case 'win': return '🎉 YOU WIN!';
+      case 'lose': return '😔 YOU LOSE';
+      case 'push': return '🤝 PUSH';
       default: return '';
     }
   };
 
   const getResultColor = () => {
     switch (gameState.gameResult) {
-      case 'win':
       case 'blackjack':
-        return 'text-green-400';
-      case 'lose':
-        return 'text-red-400';
-      case 'push':
-        return 'text-yellow-400';
-      default:
-        return 'text-white';
+      case 'win': return 'text-green-400';
+      case 'lose': return 'text-red-400';
+      case 'push': return 'text-yellow-400';
+      default: return '';
     }
   };
 
@@ -330,279 +353,351 @@ export default function BlackjackPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Please log in to play Blackjack</h2>
-          <p className="text-gray-400">You need to be logged in to place bets and track your progress.</p>
-          <div className="mt-6">
-            <a href="/test-backend" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 text-white flex items-center justify-center p-4">
+        <EnhancedCard variant="glow" className="text-center max-w-md w-full">
+          <div className="p-8">
+            <div className="text-6xl mb-4">🃏</div>
+            <h2 className="text-2xl font-bold mb-4">Please log in to play Blackjack</h2>
+            <p className="text-gray-400 mb-6">You need to be logged in to place bets and track your progress.</p>
+            <EnhancedButton 
+              variant="primary" 
+              size="lg"
+              onClick={() => { window.location.href = '/test-backend' }}
+              className="w-full"
+            >
               Go to Login Page
-            </a>
+            </EnhancedButton>
           </div>
-        </div>
+        </EnhancedCard>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 text-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-yellow-400 to-red-600 bg-clip-text text-transparent">
-            🃏 Blackjack 21
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 text-white">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-4xl md:text-6xl font-bold mb-4">
+            🃏 <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">Blackjack</span>
           </h1>
-          <p className="text-gray-300">Beat the dealer without going over 21!</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Game Area */}
-          <div className="lg:col-span-3">
-            <div className="gaming-card p-6">
-              {/* Dealer Section */}
-              <div className="mb-8">
-                <h2 className="text-xl font-bold mb-4 text-center">Dealer</h2>
-                <div className="flex justify-center space-x-2 mb-2">
-                  {gameState.dealerHand.cards.map((card, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ rotateY: 180 }}
-                      animate={{ rotateY: 0 }}
-                      transition={{ delay: index * 0.2 }}
-                      className="bg-white text-black rounded-lg p-4 font-bold text-lg shadow-lg"
-                    >
-                      {getCardDisplay(card)}
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="text-center text-gray-300">
-                  Value: {gameState.gamePhase === 'betting' ? '-' : gameState.dealerHand.value}
-                  {gameState.dealerHand.isSoft && gameState.gamePhase !== 'betting' ? ' (Soft)' : ''}
-                </div>
+          <p className="text-xl text-gray-300 mb-6">
+            Get as close to 21 as possible without going over!
+          </p>
+          
+          {/* User Stats */}
+          <div className="flex flex-wrap justify-center gap-4 mb-8">
+            <EnhancedCard variant="stats" className="px-6 py-3">
+              <div className="text-center">
+                <div className="text-sm text-gray-400">Balance</div>
+                <div className="text-xl font-bold text-green-400">${user.balance.toFixed(2)}</div>
               </div>
-
-              {/* Player Section */}
-              <div className="mb-8">
-                <h2 className="text-xl font-bold mb-4 text-center">Player</h2>
-                <div className="flex justify-center space-x-2 mb-2">
-                  {gameState.playerHand.cards.map((card, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ y: 100, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: index * 0.2 }}
-                      className="bg-white text-black rounded-lg p-4 font-bold text-lg shadow-lg"
-                    >
-                      {getCardDisplay(card)}
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="text-center text-gray-300">
-                  Value: {gameState.playerHand.value}
-                  {gameState.playerHand.isSoft ? ' (Soft)' : ''}
-                  {gameState.playerHand.isBlackjack ? ' - BLACKJACK!' : ''}
-                  {gameState.playerHand.isBust ? ' - BUST!' : ''}
-                </div>
+            </EnhancedCard>
+            <EnhancedCard variant="stats" className="px-6 py-3">
+              <div className="text-center">
+                <div className="text-sm text-gray-400">Level</div>
+                <div className="text-xl font-bold text-blue-400">{user.level}</div>
               </div>
+            </EnhancedCard>
+            {gameStats.gamesPlayed > 0 && (
+              <>
+                <EnhancedCard variant="stats" className="px-6 py-3">
+                  <div className="text-center">
+                    <div className="text-sm text-gray-400">Win Rate</div>
+                    <div className="text-xl font-bold text-green-400">
+                      {((gameStats.wins + gameStats.blackjacks) / gameStats.gamesPlayed * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                </EnhancedCard>
+                <EnhancedCard variant="stats" className="px-6 py-3">
+                  <div className="text-center">
+                    <div className="text-sm text-gray-400">Total Won</div>
+                    <div className="text-xl font-bold text-blue-400">${gameStats.totalWinnings.toFixed(0)}</div>
+                  </div>
+                </EnhancedCard>
+              </>
+            )}
+          </div>
+        </motion.div>
 
-              {/* Game Result */}
-              <AnimatePresence>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Game Area */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Game Table */}
+            <EnhancedCard variant="game" className="p-8">
+              <div className="text-center">
+                {/* Dealer Hand */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold mb-4">Dealer</h3>
+                  <div className="flex justify-center space-x-2 mb-4">
+                    {gameState.dealerHand.cards.map((card, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.2 }}
+                        className={`w-16 h-24 bg-white text-black rounded-lg flex items-center justify-center text-lg font-bold shadow-lg ${
+                          card.hidden ? 'bg-blue-600 text-white' : ''
+                        }`}
+                      >
+                        {getCardDisplay(card)}
+                      </motion.div>
+                    ))}
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {gameState.gamePhase === 'game-over' || gameState.gamePhase === 'dealer-turn' ? 
+                      `Value: ${gameState.dealerHand.value}` : 
+                      'Hidden Card'
+                    }
+                  </div>
+                </div>
+
+                {/* Game Result */}
                 {gameState.gameResult && (
                   <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    className={`text-center text-2xl font-bold mb-6 ${getResultColor()}`}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={`text-3xl font-bold mb-6 ${getResultColor()}`}
                   >
                     {getResultMessage()}
                   </motion.div>
                 )}
-              </AnimatePresence>
 
-              {/* Game Controls */}
-              <div className="flex justify-center space-x-4 mb-6">
-                {gameState.gamePhase === 'betting' && (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={placeBet}
-                    disabled={betAmount > (user?.balance || 0) || gameState.isLoading}
-                    className="gaming-button bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {gameState.isLoading ? 'Dealing...' : `Deal Cards ($${betAmount})`}
-                  </motion.button>
-                )}
+                {/* Player Hand */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold mb-4">Your Hand</h3>
+                  <div className="flex justify-center space-x-2 mb-4">
+                    {gameState.playerHand.cards.map((card, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.2 }}
+                        className="w-16 h-24 bg-white text-black rounded-lg flex items-center justify-center text-lg font-bold shadow-lg"
+                      >
+                        {getCardDisplay(card)}
+                      </motion.div>
+                    ))}
+                  </div>
+                  <div className="text-lg font-semibold">
+                    Value: {gameState.playerHand.value}
+                    {gameState.playerHand.isSoft && ' (Soft)'}
+                    {gameState.playerHand.isBlackjack && ' - BLACKJACK!'}
+                    {gameState.playerHand.isBust && ' - BUST!'}
+                  </div>
+                </div>
 
-                {gameState.gamePhase === 'player-turn' && (
-                  <>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={hit}
-                      disabled={!gameState.canHit || gameState.isLoading}
-                      className="gaming-button bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                {/* Game Actions */}
+                <div className="space-y-6">
+                  {gameState.gamePhase === 'betting' && (
+                    <div>
+                      <h3 className="text-xl font-bold mb-4">Place Your Bet</h3>
+                      <EnhancedInput
+                        type="number"
+                        value={betAmount.toString()}
+                        onChange={(value) => setBetAmount(Math.max(0, Number(value)))}
+                        disabled={gameState.isLoading}
+                        placeholder="Enter bet amount"
+                        className="w-full mb-4"
+                      />
+                      
+                      {/* Quick bet buttons */}
+                      <div className="grid grid-cols-5 gap-2 mb-6">
+                        {quickAmounts.map((amount) => (
+                          <EnhancedButton
+                            key={amount}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setBetAmount(Math.min(amount, user.balance))}
+                            disabled={gameState.isLoading || amount > user.balance}
+                          >
+                            ${amount}
+                          </EnhancedButton>
+                        ))}
+                      </div>
+                      
+                      <EnhancedButton
+                        variant="primary"
+                        size="xl"
+                        onClick={placeBet}
+                        disabled={!user || betAmount <= 0 || betAmount > user.balance || gameState.isLoading}
+                        loading={gameState.isLoading}
+                        className="w-full h-16 text-xl font-bold"
+                      >
+                        {gameState.isLoading ? '🃏 Dealing...' : 
+                         betAmount > 0 && betAmount <= user.balance ? 
+                           `🃏 Deal Cards ($${betAmount})` : 
+                           'Enter Valid Bet Amount'
+                        }
+                      </EnhancedButton>
+                    </div>
+                  )}
+
+                  {gameState.gamePhase === 'player-turn' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <EnhancedButton
+                        variant="primary"
+                        size="lg"
+                        onClick={hit}
+                        disabled={!gameState.canHit || gameState.isLoading}
+                        loading={gameState.isLoading}
+                        className="h-14 text-lg font-bold"
+                      >
+                        {gameState.isLoading ? '🃏 Hitting...' : '🃏 Hit'}
+                      </EnhancedButton>
+                      
+                      <EnhancedButton
+                        variant="secondary"
+                        size="lg"
+                        onClick={stand}
+                        disabled={!gameState.canStand || gameState.isLoading}
+                        className="h-14 text-lg font-bold"
+                      >
+                        ✋ Stand
+                      </EnhancedButton>
+                      
+                      <EnhancedButton
+                        variant="warning"
+                        size="lg"
+                        onClick={() => {
+                          setBetAmount(gameState.currentBet * 2);
+                          hit();
+                        }}
+                        disabled={!gameState.canDouble || gameState.isLoading}
+                        className="h-14 text-lg font-bold"
+                      >
+                        💰 Double
+                      </EnhancedButton>
+                    </div>
+                  )}
+
+                  {gameState.gamePhase === 'dealer-turn' && (
+                    <div className="text-center">
+                      <LoadingSpinner variant="casino" size="lg" />
+                      <div className="text-lg mt-4">Dealer is playing...</div>
+                    </div>
+                  )}
+
+                  {gameState.gamePhase === 'game-over' && (
+                    <EnhancedButton
+                      variant="primary"
+                      size="xl"
+                      onClick={newGame}
+                      className="w-full h-16 text-xl font-bold"
                     >
-                      Hit
-                    </motion.button>
-
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={stand}
-                      disabled={!gameState.canStand || gameState.isLoading}
-                      className="gaming-button bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50"
-                    >
-                      Stand
-                    </motion.button>
-
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setGameState(prev => ({ ...prev, canDouble: false }))}
-                      disabled={!gameState.canDouble || gameState.isLoading}
-                      className="gaming-button bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
-                    >
-                      Double
-                    </motion.button>
-                  </>
-                )}
-
-                {gameState.gamePhase === 'game-over' && (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={newGame}
-                    className="gaming-button bg-green-600 hover:bg-green-700"
-                  >
-                    <ArrowPathIcon className="mr-2 w-5 h-5" />
-                    New Game
-                  </motion.button>
-                )}
+                      🔄 New Game
+                    </EnhancedButton>
+                  )}
+                </div>
               </div>
-            </div>
+            </EnhancedCard>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Balance */}
-            <div className="gaming-card p-4 text-center">
-              <CurrencyDollarIcon className="mx-auto mb-2 text-green-400 w-5 h-5" />
-              <div className="text-lg font-bold text-green-400">${user?.balance}</div>
-              <div className="text-xs text-gray-400">Balance</div>
-            </div>
-
-            {/* Betting Controls */}
-            {gameState.gamePhase === 'betting' && (
-              <div className="gaming-card p-4">
-                <h3 className="font-bold mb-4 flex items-center">
-                  <ChartBarIcon className="mr-2 w-5 h-5" />
-                  Bet Amount
-                </h3>
-                
-                <div className="flex space-x-2 mb-4">
-                  <input
-                    type="number"
-                    min="1"
-                    max={user?.balance}
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(parseInt(e.target.value) || 1)}
-                    disabled={gameState.gamePhase !== 'betting' || gameState.isLoading}
-                    className="gaming-input flex-1"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  {quickAmounts.map(amount => (
-                    <button
-                      key={amount}
-                      onClick={() => setBetAmount(amount)}
-                      disabled={gameState.gamePhase !== 'betting' || amount > (user?.balance || 0) || gameState.isLoading}
-                      className={`px-3 py-2 rounded transition-colors text-sm ${
-                        betAmount === amount 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                      }`}
-                    >
-                      ${amount}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Game Stats */}
-            <div className="gaming-card p-4">
-              <h3 className="font-bold mb-4 flex items-center">
-                <TrophyIcon className="mr-2 w-5 h-5" />
-                Statistics
+            <EnhancedCard variant="stats" className="p-6">
+              <h3 className="text-xl font-bold mb-4 flex items-center">
+                <ChartBarIcon className="w-6 h-6 mr-2 text-green-500" />
+                Game Stats
               </h3>
-              <div className="space-y-2 text-sm">
+              <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span>Games Played:</span>
-                  <span className="font-bold">{gameStats.gamesPlayed}</span>
+                  <span className="text-gray-400">Games Played</span>
+                  <span className="font-semibold">{gameStats.gamesPlayed}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Wins:</span>
-                  <span className="font-bold text-green-400">{gameStats.wins}</span>
+                  <span className="text-gray-400">Wins</span>
+                  <span className="font-semibold text-green-400">{gameStats.wins + gameStats.blackjacks}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Losses:</span>
-                  <span className="font-bold text-red-400">{gameStats.losses}</span>
+                  <span className="text-gray-400">Losses</span>
+                  <span className="font-semibold text-red-400">{gameStats.losses}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Pushes:</span>
-                  <span className="font-bold text-yellow-400">{gameStats.pushes}</span>
+                  <span className="text-gray-400">Pushes</span>
+                  <span className="font-semibold text-yellow-400">{gameStats.pushes}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Blackjacks:</span>
-                  <span className="font-bold text-purple-400">{gameStats.blackjacks}</span>
-                </div>
-                <div className="flex justify-between border-t border-gray-600 pt-2">
-                  <span>Net Winnings:</span>
-                  <span className={`font-bold ${gameStats.totalWinnings >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    ${gameStats.totalWinnings}
-                  </span>
+                  <span className="text-gray-400">Blackjacks</span>
+                  <span className="font-semibold text-purple-400">{gameStats.blackjacks}</span>
                 </div>
               </div>
-            </div>
+            </EnhancedCard>
 
-            {/* Game History */}
-            <div className="gaming-card p-4">
-              <h3 className="font-bold mb-4 flex items-center">
-                <ClockIcon className="mr-2 w-5 h-5" />
+            {/* Recent Games */}
+            <EnhancedCard variant="default" className="p-6">
+              <h3 className="text-xl font-bold mb-4 flex items-center">
+                <ClockIcon className="w-6 h-6 mr-2 text-blue-500" />
                 Recent Games
               </h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <div className="space-y-2">
                 {gameHistory.length > 0 ? (
-                  gameHistory.map((game, index) => (
-                    <div key={game.id} className="flex justify-between items-center p-2 bg-gray-800 rounded text-sm">
-                      <div>
-                        <div className={`font-bold ${
-                          game.result === 'win' || game.result === 'blackjack' ? 'text-green-400' :
-                          game.result === 'loss' ? 'text-red-400' : 'text-yellow-400'
-                        }`}>
-                          {game.result === 'win' ? 'Win' :
-                           game.result === 'loss' ? 'Loss' :
-                           game.result === 'push' ? 'Push' :
-                           game.result === 'blackjack' ? 'Blackjack' : game.result}
+                  gameHistory.map((game) => (
+                    <div key={game.id} className="flex items-center justify-between py-2 border-b border-gray-700/50">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">🃏</span>
+                        <div>
+                          <div className="text-sm font-semibold">${game.betAmount}</div>
+                          <div className="text-xs text-gray-400">{game.time}</div>
                         </div>
-                        <div className="text-gray-400">{game.time}</div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold">${game.winAmount}</div>
-                        <div className="text-gray-400 text-xs">Bet: ${game.betAmount}</div>
+                      <div className={`text-sm font-bold ${
+                        game.result === 'win' || game.result === 'blackjack' ? 'text-green-400' : 
+                        game.result === 'push' ? 'text-yellow-400' : 'text-red-400'
+                      }`}>
+                        {game.result === 'win' || game.result === 'blackjack' ? `+$${game.winAmount}` : 
+                         game.result === 'push' ? 'Push' : `-$${game.betAmount}`}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="text-gray-500 text-center py-4">
-                    No games played yet
+                  <div className="text-center text-gray-400 py-4">
+                    No recent games
                   </div>
                 )}
               </div>
-            </div>
+            </EnhancedCard>
+
+            {/* Game Rules */}
+            <EnhancedCard variant="default" className="p-6">
+              <h3 className="text-xl font-bold mb-4 flex items-center">
+                <TrophyIcon className="w-6 h-6 mr-2 text-yellow-500" />
+                How to Play
+              </h3>
+              <div className="space-y-2 text-sm text-gray-400">
+                <div>• Get as close to 21 as possible</div>
+                <div>• Don't go over 21 (bust)</div>
+                <div>• Aces count as 1 or 11</div>
+                <div>• Face cards count as 10</div>
+                <div>• Blackjack pays 3:2</div>
+                <div>• Dealer stands on 17</div>
+              </div>
+            </EnhancedCard>
           </div>
         </div>
       </div>
+
+      {/* Toast Notifications */}
+      {showToast && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+          showToast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+        } text-white`}>
+          <div className="flex items-center justify-between">
+            <span>{showToast.message}</span>
+            <button 
+              onClick={() => setShowToast(null)}
+              className="ml-4 text-white hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

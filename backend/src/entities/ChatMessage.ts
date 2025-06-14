@@ -18,56 +18,56 @@ export enum MessageStatus {
 @Entity('chat_messages')
 export class ChatMessage {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id!: string
 
   @Column({ type: 'text' })
-  content: string
+  content!: string
 
   @Column({
     type: 'enum',
     enum: ChatType,
     default: ChatType.GENERAL
   })
-  chatType: ChatType
+  chatType!: ChatType
 
-  @Column({ nullable: true })
-  roomId: string
+  @Column({ type: 'varchar', nullable: true })
+  roomId!: string
 
   @Column({
     type: 'enum',
     enum: MessageStatus,
     default: MessageStatus.ACTIVE
   })
-  status: MessageStatus
+  status!: MessageStatus
 
-  @Column({ nullable: true })
-  replyToId: string
+  @Column({ type: 'varchar', nullable: true })
+  replyToId!: string
 
   @Column({ type: 'jsonb', default: {} })
-  metadata: Record<string, any>
+  metadata!: Record<string, any>
 
-  @Column({ nullable: true })
-  moderatedBy: string
+  @Column({ type: 'varchar', nullable: true })
+  moderatedBy!: string
 
-  @Column({ nullable: true })
-  moderatedAt: Date
+  @Column({ type: 'timestamp', nullable: true })
+  moderatedAt!: Date
 
-  @Column({ nullable: true })
-  moderationReason: string
+  @Column({ type: 'varchar', nullable: true })
+  moderationReason!: string
 
   @CreateDateColumn()
-  createdAt: Date
+  createdAt!: Date
 
   @UpdateDateColumn()
-  updatedAt: Date
+  updatedAt!: Date
 
   // Relations
   @ManyToOne(() => User, user => user.chatMessages)
   @JoinColumn({ name: 'userId' })
-  user: User
+  user!: User
 
-  @Column()
-  userId: string
+  @Column({ type: 'varchar' })
+  userId!: string
 
   // Virtual properties
   get isDeleted(): boolean {

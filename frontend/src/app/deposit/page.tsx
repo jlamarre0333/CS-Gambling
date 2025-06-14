@@ -34,6 +34,7 @@ interface SkinItem {
   rarity: 'Consumer' | 'Industrial' | 'Mil-Spec' | 'Restricted' | 'Classified' | 'Covert' | 'Contraband';
   quality: 'Factory New' | 'Minimal Wear' | 'Field-Tested' | 'Well-Worn' | 'Battle-Scarred';
   price: number;
+  value: number;
   image: string;
   marketPrice: number;
   float: number;
@@ -65,7 +66,7 @@ interface Transaction {
 
 const DepositPage = () => {
   const [steamConnected, setSteamConnected] = useState(true) // Set to true for demo
-  const [selectedSkins, setSelectedSkins] = useState<number[]>([])
+  const [selectedSkins, setSelectedSkins] = useState<string[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('value')
   const [isLoading, setIsLoading] = useState(false)
@@ -77,84 +78,108 @@ const DepositPage = () => {
   const [filterRarity, setFilterRarity] = useState<string>('all')
 
   // Mock CS:GO/CS2 skin data with realistic names and values
-  const steamInventory = [
+  const steamInventory: SkinItem[] = [
     {
-      id: 1,
+      id: '1',
       name: 'AK-47 | Redline',
+      game: 'CS2',
       quality: 'Field-Tested',
+      rarity: 'Classified',
+      price: 45.30,
       value: 45.30,
       image: '/api/placeholder/100/75',
-      rarity: 'Classified',
+      marketPrice: 47.50,
       float: 0.25,
       stickers: ['Team Dignitas | Katowice 2014']
     },
     {
-      id: 2,
+      id: '2',
       name: 'AWP | Dragon Lore',
+      game: 'CS2',
       quality: 'Battle-Scarred',
+      rarity: 'Covert',
+      price: 2450.00,
       value: 2450.00,
       image: '/api/placeholder/100/75',
-      rarity: 'Covert',
+      marketPrice: 2500.00,
       float: 0.78,
       stickers: []
     },
     {
-      id: 3,
+      id: '3',
       name: 'M4A4 | Howl',
+      game: 'CS2',
       quality: 'Minimal Wear',
+      rarity: 'Contraband',
+      price: 1890.50,
       value: 1890.50,
       image: '/api/placeholder/100/75',
-      rarity: 'Contraband',
+      marketPrice: 1950.00,
       float: 0.12,
       stickers: ['Crown (Foil)']
     },
     {
-      id: 4,
+      id: '4',
       name: 'Glock-18 | Fade',
+      game: 'CS2',
       quality: 'Factory New',
+      rarity: 'Restricted',
+      price: 285.75,
       value: 285.75,
       image: '/api/placeholder/100/75',
-      rarity: 'Restricted',
+      marketPrice: 290.00,
       float: 0.03,
       stickers: []
     },
     {
-      id: 5,
+      id: '5',
       name: 'Karambit | Doppler',
+      game: 'CS2',
       quality: 'Factory New',
+      rarity: 'Covert',
+      price: 750.00,
       value: 750.00,
       image: '/api/placeholder/100/75',
-      rarity: 'Covert',
+      marketPrice: 780.00,
       float: 0.01,
       stickers: []
     },
     {
-      id: 6,
+      id: '6',
       name: 'USP-S | Kill Confirmed',
+      game: 'CS2',
       quality: 'Minimal Wear',
+      rarity: 'Covert',
+      price: 67.80,
       value: 67.80,
       image: '/api/placeholder/100/75',
-      rarity: 'Covert',
+      marketPrice: 70.00,
       float: 0.14,
       stickers: ['Virtus.pro | Katowice 2015']
     },
     {
-      id: 7,
+      id: '7',
       name: 'Desert Eagle | Blaze',
+      game: 'CS2',
       quality: 'Factory New',
+      rarity: 'Restricted',
+      price: 125.40,
       value: 125.40,
       image: '/api/placeholder/100/75',
-      rarity: 'Restricted',
+      marketPrice: 130.00,
       float: 0.02,
       stickers: []
     },
     {
-      id: 8,
+      id: '8',
       name: 'AK-47 | Fire Serpent',
+      game: 'CS2',
       quality: 'Field-Tested',
+      rarity: 'Covert',
+      price: 890.25,
       value: 890.25,
       image: '/api/placeholder/100/75',
-      rarity: 'Covert',
+      marketPrice: 920.00,
       float: 0.31,
       stickers: ['Team EnVyUs | Katowice 2015']
     }
@@ -179,7 +204,7 @@ const DepositPage = () => {
     return total + (skin?.value || 0)
   }, 0)
 
-  const toggleSkinSelection = (skinId: number) => {
+  const toggleSkinSelection = (skinId: string) => {
     setSelectedSkins(prev => 
       prev.includes(skinId) 
         ? prev.filter(id => id !== skinId)
@@ -239,9 +264,9 @@ const DepositPage = () => {
 
   const handleSkinToggle = (skin: SkinItem) => {
     setSelectedSkins(prev => {
-      const isSelected = prev.find(s => s.id === skin.id)
+      const isSelected = prev.find(s => s === skin.id)
       if (isSelected) {
-        return prev.filter(s => s.id !== skin.id)
+        return prev.filter(id => id !== skin.id)
       } else {
         return [...prev, skin.id]
       }
@@ -396,7 +421,7 @@ const DepositPage = () => {
                             </div>
                           )}
                           
-                          {skin.stickers.length > 0 && (
+                          {skin.stickers && skin.stickers.length > 0 && (
                             <div className="absolute bottom-1 left-1">
                               <div className="w-3 h-3 bg-yellow-500 rounded-full" title="Has Stickers"></div>
                             </div>

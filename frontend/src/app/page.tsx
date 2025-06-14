@@ -17,9 +17,12 @@ import {
   UserIcon
 } from '@heroicons/react/24/outline'
 import { useAuth } from '@/contexts/AuthContext'
+import { EnhancedCard } from '@/components/ui/EnhancedCard'
+import EnhancedButton from '@/components/ui/EnhancedButton'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
 const HomePage = () => {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading } = useAuth()
   
   const games = [
     {
@@ -126,10 +129,56 @@ const HomePage = () => {
     }
   ]
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
+      {/* Navigation Bar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+              CS Gambling
+            </Link>
+            
+            <div className="flex items-center space-x-4">
+              {isAuthenticated && user ? (
+                <>
+                  <div className="hidden sm:flex items-center space-x-2 text-gray-300">
+                    <span className="text-sm">Balance:</span>
+                    <span className="text-green-400 font-semibold">${user.balance.toFixed(2)}</span>
+                  </div>
+                  <Link href="/profile">
+                    <EnhancedButton variant="ghost" size="sm" className="flex items-center space-x-2">
+                      <img 
+                        src={user.avatar || '/default-avatar.png'} 
+                        alt={user.username}
+                        className="w-6 h-6 rounded-full"
+                      />
+                      <span className="hidden sm:inline">{user.username}</span>
+                    </EnhancedButton>
+                  </Link>
+                </>
+              ) : (
+                <Link href="/login">
+                  <EnhancedButton variant="primary" size="sm">
+                    Login with Steam
+                  </EnhancedButton>
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden pt-16">
         {/* Background Elements */}
         <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-72 h-72 bg-orange-500/10 rounded-full blur-3xl" />
@@ -157,7 +206,7 @@ const HomePage = () => {
               </p>
               <p className="text-lg text-gray-400 mb-12 max-w-2xl mx-auto">
                 {isAuthenticated && user
-                  ? `Level ${user.level} player • Steam ID: ${user.steamId.slice(-8)} • Join thousands of players in fair gaming`
+                  ? `Steam ID: ${user.steamId.slice(-8)} • Join thousands of players in fair gaming`
                   : 'Experience provably fair gaming with instant withdrawals, competitive odds, and a thriving community of players.'
                 }
               </p>
@@ -171,41 +220,50 @@ const HomePage = () => {
             >
               {isAuthenticated && user ? (
                 <>
-                  <Link
-                    href="/coinflip"
-                    className="group bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25 flex items-center space-x-2"
-                  >
-                    <PlayIcon className="w-5 h-5" />
-                    <span>Start Playing</span>
-                    <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <Link href="/coinflip">
+                    <EnhancedButton
+                      variant="success"
+                      size="lg"
+                      className="flex items-center space-x-2"
+                    >
+                      <PlayIcon className="w-5 h-5" />
+                      <span>Start Playing</span>
+                      <ArrowTrendingUpIcon className="w-5 h-5" />
+                    </EnhancedButton>
                   </Link>
-                  <Link
-                    href="/inventory"
-                    className="group bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25 flex items-center space-x-2"
-                  >
-                    <UserIcon className="w-5 h-5" />
-                    <span>View Inventory</span>
-                    <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <Link href="/profile">
+                    <EnhancedButton
+                      variant="primary"
+                      size="lg"
+                      className="flex items-center space-x-2"
+                    >
+                      <UserIcon className="w-5 h-5" />
+                      <span>View Profile</span>
+                      <ArrowTrendingUpIcon className="w-5 h-5" />
+                    </EnhancedButton>
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link
-                    href="/login"
-                    className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25 flex items-center space-x-2"
-                  >
-                    <PlayIcon className="w-5 h-5" />
-                    <span>Login with Steam</span>
-                    <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <Link href="/login">
+                    <EnhancedButton
+                      variant="success"
+                      size="lg"
+                      className="flex items-center space-x-2"
+                    >
+                      <PlayIcon className="w-5 h-5" />
+                      <span>Login with Steam</span>
+                      <ArrowTrendingUpIcon className="w-5 h-5" />
+                    </EnhancedButton>
                   </Link>
-                  <Link
-                    href="/coinflip"
-                    className="group bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25 flex items-center space-x-2"
+                  <EnhancedButton
+                    variant="secondary"
+                    size="lg"
+                    className="flex items-center space-x-2"
                   >
-                    <PlayIcon className="w-5 h-5" />
-                    <span>Play Demo</span>
-                    <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </Link>
+                    <UserGroupIcon className="w-5 h-5" />
+                    <span>Join Community</span>
+                  </EnhancedButton>
                 </>
               )}
             </motion.div>
@@ -214,102 +272,79 @@ const HomePage = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 bg-gradient-to-b from-gray-900/50 to-transparent">
+      <section className="py-20 bg-black/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-8"
-          >
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <motion.div
                 key={stat.label}
                 initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
                 className="text-center"
               >
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-xl mb-4 border border-orange-500/30">
-                  <stat.icon className="w-6 h-6 text-orange-400" />
-                </div>
+                <stat.icon className="w-8 h-8 text-orange-400 mx-auto mb-2" />
                 <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
-                <div className="text-gray-400 text-sm">{stat.label}</div>
+                <div className="text-gray-400">{stat.label}</div>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* Games Section */}
-      <section className="py-24">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Choose Your Game
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              From classic coin flips to high-stakes jackpots, find your perfect game and start winning
+              From classic coin flips to high-stakes jackpots, find your perfect game
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {games.map((game, index) => (
               <motion.div
                 key={game.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className="group"
               >
                 <Link href={game.href}>
-                  <div className="gaming-card p-6 h-full cursor-pointer">
-                    {/* Game Icon */}
-                    <div className={`inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br ${game.color} rounded-2xl mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                  <EnhancedCard 
+                    variant="game" 
+                    className="p-6 h-full hover:scale-105 transition-transform cursor-pointer group"
+                    hover={true}
+                  >
+                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                       <game.icon className="w-8 h-8 text-white" />
                     </div>
-
-                    {/* Game Info */}
-                    <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-orange-400 transition-colors">
-                      {game.name}
-                    </h3>
-                    <p className="text-gray-400 mb-6 leading-relaxed">
-                      {game.description}
-                    </p>
-
-                    {/* Game Stats */}
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Players Online</span>
-                        <span className="text-sm font-medium text-green-400">{game.players}</span>
+                    
+                    <h3 className="text-2xl font-bold text-white mb-2">{game.name}</h3>
+                    <p className="text-gray-400 mb-4">{game.description}</p>
+                    
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Players:</span>
+                        <span className="text-green-400">{game.players}</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Win Chance</span>
-                        <span className="text-sm font-medium text-blue-400">{game.winChance}</span>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Win Chance:</span>
+                        <span className="text-blue-400">{game.winChance}</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Max Multiplier</span>
-                        <span className="text-sm font-medium text-orange-400">{game.multiplier}</span>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Multiplier:</span>
+                        <span className="text-yellow-400">{game.multiplier}</span>
                       </div>
                     </div>
-
-                    {/* Play Button */}
-                    <div className="mt-6">
-                      <div className={`w-full bg-gradient-to-r ${game.color} text-white py-3 px-4 rounded-xl font-semibold text-center transition-all duration-300 group-hover:shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0`}>
-                        Play Now
-                      </div>
-                    </div>
-                  </div>
+                  </EnhancedCard>
                 </Link>
               </motion.div>
             ))}
@@ -318,20 +353,19 @@ const HomePage = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 bg-gradient-to-b from-transparent to-gray-900/30">
+      <section className="py-20 bg-black/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Why Choose Us?
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Experience the best in CS2 gambling with industry-leading features and security
+              Experience the best in online gaming with our cutting-edge platform
             </p>
           </motion.div>
 
@@ -339,21 +373,15 @@ const HomePage = () => {
             {features.map((feature, index) => (
               <motion.div
                 key={feature.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.2 }}
-                viewport={{ once: true }}
-                className="text-center"
               >
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-2xl mb-6 border border-orange-500/30">
-                  <feature.icon className="w-8 h-8 text-orange-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-4">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-400 leading-relaxed">
-                  {feature.description}
-                </p>
+                <EnhancedCard className="p-8 text-center h-full">
+                  <feature.icon className="w-12 h-12 text-orange-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
+                  <p className="text-gray-400">{feature.description}</p>
+                </EnhancedCard>
               </motion.div>
             ))}
           </div>
@@ -361,81 +389,56 @@ const HomePage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+      <section className="py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="gaming-card p-12"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              {isAuthenticated && user ? 'Choose Your Next Game' : 'Ready to Start Winning?'}
+              Ready to Start Winning?
             </h2>
             <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-              {isAuthenticated && user 
-                ? `Welcome back ${user.username}! Your current balance is $${user.balance.toFixed(2)}. Pick a game and start winning!`
-                : 'Join thousands of players and experience the thrill of CS2 skin gambling with guaranteed fair play and instant payouts.'
-              }
+              Join thousands of players and start your journey to big wins today
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {isAuthenticated && user ? (
-                <>
-                  <Link
-                    href="/coinflip"
-                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25"
+            
+            {!isAuthenticated ? (
+              <Link href="/login">
+                <EnhancedButton
+                  variant="success"
+                  size="lg"
+                  className="flex items-center space-x-2 mx-auto"
+                >
+                  <PlayIcon className="w-6 h-6" />
+                  <span>Get Started Now</span>
+                  <ArrowTrendingUpIcon className="w-6 h-6" />
+                </EnhancedButton>
+              </Link>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href="/coinflip">
+                  <EnhancedButton
+                    variant="success"
+                    size="lg"
+                    className="flex items-center space-x-2"
                   >
-                    🎯 Coin Flip
-                  </Link>
-                  <Link
-                    href="/jackpot"
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-yellow-500/25"
+                    <PlayIcon className="w-6 h-6" />
+                    <span>Play Now</span>
+                  </EnhancedButton>
+                </Link>
+                <Link href="/profile">
+                  <EnhancedButton
+                    variant="primary"
+                    size="lg"
+                    className="flex items-center space-x-2"
                   >
-                    🏆 Jackpot
-                  </Link>
-                  <Link
-                    href="/inventory"
-                    className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25"
-                  >
-                    📦 My Inventory
-                  </Link>
-                  <Link
-                    href="/steam-test"
-                    className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/25"
-                  >
-                    🔧 Steam Data
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/login"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25"
-                  >
-                    Login with Steam
-                  </Link>
-                  <Link
-                    href="/steam-test"
-                    className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/25"
-                  >
-                    🔧 Test Steam Data
-                  </Link>
-                  <Link
-                    href="/inventory"
-                    className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25"
-                  >
-                    View Inventory
-                  </Link>
-                  <Link
-                    href="/coinflip"
-                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25"
-                  >
-                    Play Demo
-                  </Link>
-                </>
-              )}
-            </div>
+                    <UserIcon className="w-6 h-6" />
+                    <span>View Profile</span>
+                  </EnhancedButton>
+                </Link>
+              </div>
+            )}
           </motion.div>
         </div>
       </section>

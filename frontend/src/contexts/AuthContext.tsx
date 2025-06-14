@@ -7,21 +7,21 @@ interface SteamUser {
   steamId: string
   username: string
   avatar: string
-  profileUrl: string
   balance: number
-  level: number
-  isOnline: boolean
-  lastLogin: Date
-  createdAt: Date
+  role: string
+  isVip: boolean
+  lastLoginAt: Date
+  memberSince: Date
 }
 
 interface AuthContextType {
   user: SteamUser | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (steamId: string) => Promise<boolean>
-  logout: () => void
+  checkAuth: () => Promise<void>
+  logout: () => Promise<void>
   updateBalance: (newBalance: number) => void
+  refreshToken: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -40,79 +40,123 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<SteamUser | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Check for existing session on mount
+  // Check authentication status on mount and periodically
   useEffect(() => {
-    const savedUser = localStorage.getItem('steamUser')
-    if (savedUser) {
-      try {
-        const userData = JSON.parse(savedUser)
-        setUser(userData)
-      } catch (error) {
-        console.error('Error parsing saved user data:', error)
-        localStorage.removeItem('steamUser')
+    checkAuth()
+    
+    // Check auth every 5 minutes
+    const interval = setInterval(checkAuth, 5 * 60 * 1000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  // Handle URL parameters for login success/error
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const loginStatus = urlParams.get('login')
+    const welcomeBonus = urlParams.get('welcome')
+    
+    if (loginStatus === 'success') {
+      // Remove URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname)
+      
+      // Check auth to get user data
+      checkAuth()
+      
+      // Show welcome message if new user
+      if (welcomeBonus === 'true') {
+        setTimeout(() => {
+          alert('Welcome! You\'ve received $1000 bonus credits!')
+        }, 1000)
       }
     }
   }, [])
 
-  const login = async (steamId: string): Promise<boolean> => {
-    setIsLoading(true)
+  const checkAuth = async (): Promise<void> => {
     try {
-      console.log(`Attempting to login with Steam ID: ${steamId}`)
-      
-      // Call our backend Steam authentication endpoint
-      const response = await fetch('http://localhost:3001/api/steam-auth/login', {
-        method: 'POST',
+      const response = await fetch('http://localhost:3001/api/steam-auth/me', {
+        method: 'GET',
+        credentials: 'include', // Include cookies
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ steamId }),
       })
 
       if (response.ok) {
         const data = await response.json()
         
-        if (data.success && data.user) {
+        if (data.user) {
           const userData: SteamUser = {
             ...data.user,
-            lastLogin: new Date(data.user.lastLogin),
-            createdAt: new Date(data.user.createdAt)
+            lastLoginAt: new Date(data.user.lastLoginAt),
+            memberSince: new Date(data.user.memberSince)
           }
           
           setUser(userData)
-          localStorage.setItem('steamUser', JSON.stringify(userData))
-          
-          console.log('Steam login successful:', userData.username)
-          return true
         } else {
-          console.error('Login failed:', data.error || 'Unknown error')
-          return false
+          setUser(null)
         }
       } else {
-        const errorData = await response.json()
-        console.error('Login request failed:', errorData.error || 'Server error')
-        return false
+        // Token might be expired, try to refresh
+        const refreshed = await refreshToken()
+        if (!refreshed) {
+          setUser(null)
+        }
       }
     } catch (error) {
-      console.error('Login error:', error)
-      return false
+      console.error('Auth check error:', error)
+      setUser(null)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('steamUser')
-    console.log('User logged out')
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      const response = await fetch('http://localhost:3001/api/steam-auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        // Token refreshed, check auth again
+        await checkAuth()
+        return true
+      } else {
+        return false
+      }
+    } catch (error) {
+      console.error('Token refresh error:', error)
+      return false
+    }
+  }
+
+  const logout = async (): Promise<void> => {
+    try {
+      await fetch('http://localhost:3001/api/steam-auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      setUser(null)
+      // Redirect to login page
+      window.location.href = '/login'
+    }
   }
 
   const updateBalance = (newBalance: number) => {
     if (user) {
-      const updatedUser = { ...user, balance: newBalance }
-      setUser(updatedUser)
-      localStorage.setItem('steamUser', JSON.stringify(updatedUser))
+      setUser({ ...user, balance: newBalance })
     }
   }
 
@@ -120,9 +164,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     isLoading,
     isAuthenticated: !!user,
-    login,
+    checkAuth,
     logout,
-    updateBalance
+    updateBalance,
+    refreshToken
   }
 
   return (

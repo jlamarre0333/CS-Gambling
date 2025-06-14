@@ -4,7 +4,7 @@
   "description": "Backend API for CS:GO/CS2 skin gambling platform",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/simple-server.ts",
+    "dev": "tsx watch src/minimal-server.ts",
     "dev:simple": "tsx watch src/server-simple.ts",
     "dev:enhanced": "tsx watch src/server-enhanced.ts",
     "dev:test": "tsx watch src/server-test.ts",
