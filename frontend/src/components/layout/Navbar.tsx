@@ -43,17 +43,13 @@ const Navbar = () => {
 
   const navItems = [
     { name: 'Home', href: '/', icon: HomeIcon },
+    { name: 'Jackpot', href: '/jackpot', icon: TrophyIcon, featured: true },
     { name: 'Coin Flip', href: '/coinflip', icon: CurrencyDollarIcon },
-    { name: 'Jackpot', href: '/jackpot', icon: TrophyIcon },
     { name: 'Crash', href: '/crash', icon: ChartBarIcon },
     { name: 'Roulette', href: '/roulette', icon: StarIcon },
-    { name: 'Trade Bot', href: '/trade-bot', icon: CogIcon },
-    { name: 'Cases', href: '/cases', icon: StarIcon },
-    { name: 'Achievements', href: '/achievements', icon: StarIcon },
+    { name: 'Profile', href: '/profile', icon: UserIcon },
     { name: 'Leaderboard', href: '/leaderboard', icon: TrophyIcon },
-    { name: 'Payments', href: '/payments', icon: CurrencyDollarIcon },
-    { name: 'Security', href: '/security', icon: ShieldCheckIcon },
-    { name: 'Mobile', href: '/mobile', icon: DevicePhoneMobileIcon },
+    { name: 'Trade Bot', href: '/trade-bot', icon: CogIcon },
   ]
 
   const isActive = (href: string) => pathname === href
