@@ -21,12 +21,15 @@ import {
 } from '@heroicons/react/24/outline'
 import { api } from '../../config/api'
 import { useAuth } from '@/contexts/AuthContext'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { useMobile } from '@/hooks/useMobile'
 
 const Navbar = () => {
   const pathname = usePathname()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user, isAuthenticated, logout } = useAuth()
+  const { hapticFeedback, isMobile, screenSize } = useMobile()
   const userBalance = user?.balance || 0
 
   useEffect(() => {
@@ -43,10 +46,8 @@ const Navbar = () => {
     { name: 'Coin Flip', href: '/coinflip', icon: CurrencyDollarIcon },
     { name: 'Jackpot', href: '/jackpot', icon: TrophyIcon },
     { name: 'Crash', href: '/crash', icon: ChartBarIcon },
-    { name: 'Blackjack', href: '/blackjack', icon: StarIcon },
     { name: 'Roulette', href: '/roulette', icon: StarIcon },
-    { name: 'Tournaments', href: '/tournaments', icon: TrophyIcon },
-    { name: 'Live Dealer', href: '/live-dealer', icon: StarIcon },
+    { name: 'Cases', href: '/cases', icon: StarIcon },
     { name: 'Achievements', href: '/achievements', icon: StarIcon },
     { name: 'Leaderboard', href: '/leaderboard', icon: TrophyIcon },
     { name: 'Payments', href: '/payments', icon: CurrencyDollarIcon },
@@ -80,9 +81,9 @@ const Navbar = () => {
               </motion.div>
               <div className="hidden sm:block">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
-                  CS Gambling
+                  CS2 Skins
                 </h1>
-                <p className="text-xs text-gray-400 -mt-1">Premium Platform</p>
+                <p className="text-xs text-gray-400 -mt-1">Skin Betting Platform</p>
               </div>
             </Link>
 
@@ -152,9 +153,12 @@ const Navbar = () => {
                       />
                       <div className="text-left">
                         <p className="text-sm font-medium text-white">{user.username}</p>
-                        <p className="text-xs text-gray-400">Level {user.level}</p>
+                        <p className="text-xs text-gray-400">Level {(user as any).level || 1}</p>
                       </div>
                     </div>
+                    
+                    {/* Theme Toggle */}
+                    <ThemeToggle size="md" />
                     
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -184,25 +188,32 @@ const Navbar = () => {
                       <CogIcon className="w-5 h-5" />
                     </motion.button>
                     
-                    <Link href="/login">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg hover:shadow-orange-500/25"
-                      >
-                        <UserIcon className="w-4 h-4" />
-                        <span className="hidden xl:block">Login</span>
-                      </motion.button>
-                    </Link>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => window.location.href = 'http://localhost:3001/api/steam-auth/login'}
+                      className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg hover:shadow-blue-500/25"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.19 0 2.34-.21 3.41-.6.3-.11.49-.4.49-.72v-1.34c0-.32-.19-.61-.49-.72C14.34 18.21 13.19 18 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6c0 1.66-.67 3.16-1.76 4.24-.15.15-.24.35-.24.56v2.4c0 .41.34.75.75.75s.75-.34.75-.75V16.8c1.1-1.08 1.76-2.58 1.76-4.24C22 6.48 17.52 2 12 2z"/>
+                      </svg>
+                      <span className="hidden xl:block">Steam Login</span>
+                    </motion.button>
                   </>
                 )}
               </div>
 
+              {/* Theme Toggle - Always visible */}
+              <ThemeToggle size="sm" className="mr-2" />
+              
               {/* Mobile Menu Button */}
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                onClick={() => {
+                  hapticFeedback('light')
+                  setIsMobileMenuOpen(!isMobileMenuOpen)
+                }}
                 className="lg:hidden p-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
               >
                 {isMobileMenuOpen ? (
@@ -250,7 +261,10 @@ const Navbar = () => {
                     </div>
                   </div>
                   <button
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={() => {
+                      hapticFeedback('light')
+                      setIsMobileMenuOpen(false)
+                    }}
                     className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"
                   >
                     <XMarkIcon className="w-5 h-5" />
@@ -284,7 +298,10 @@ const Navbar = () => {
                       >
                         <Link
                           href={item.href}
-                          onClick={() => setIsMobileMenuOpen(false)}
+                          onClick={() => {
+                            hapticFeedback('light')
+                            setIsMobileMenuOpen(false)
+                          }}
                           className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
                             isActive(item.href)
                               ? 'bg-gradient-to-r from-orange-500/20 to-red-500/20 text-white border border-orange-500/30'
@@ -316,19 +333,33 @@ const Navbar = () => {
                           />
                           <div className="flex-1">
                             <p className="font-medium text-white">{user.username}</p>
-                            <p className="text-sm text-gray-400">Level {user.level}</p>
+                            <p className="text-sm text-gray-400">Level {(user as any).level || 1}</p>
                             <p className="text-xs text-green-400">Steam ID: {user.steamId.slice(-8)}</p>
                           </div>
                         </div>
                       </div>
                       
+                      {/* Theme Toggle in Mobile Menu */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400 text-sm">Theme</span>
+                          <ThemeToggle size="md" />
+                        </div>
+                      </div>
+                      
                       <div className="flex space-x-3">
-                        <button className="flex-1 flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white py-2.5 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => hapticFeedback('light')}
+                          className="flex-1 flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white py-2.5 rounded-lg transition-colors"
+                        >
                           <CogIcon className="w-4 h-4" />
                           <span>Settings</span>
                         </button>
                         <button 
-                          onClick={logout}
+                          onClick={() => {
+                            hapticFeedback('medium')
+                            logout()
+                          }}
                           className="flex-1 flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg transition-colors"
                         >
                           <ArrowRightOnRectangleIcon className="w-4 h-4" />

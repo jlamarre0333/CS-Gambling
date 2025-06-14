@@ -3,17 +3,21 @@
 import React, { useState, useEffect, memo, useCallback } from 'react'
 import { TrophyIcon, UserIcon, ClockIcon, CubeIcon, FireIcon } from '@heroicons/react/24/outline'
 import { useSound } from '@/hooks/useSound'
-import { useUser } from '@/contexts/UserContext'
+import { useGuest } from '@/contexts/GuestContext'
 import { api } from '@/lib/api'
 import { motion, AnimatePresence } from 'framer-motion'
 import EnhancedButton from '@/components/ui/EnhancedButton'
 import { EnhancedCard } from '@/components/ui/EnhancedCard'
 import { EnhancedInput } from '@/components/ui/EnhancedInput'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import LiveGameFeed from '@/components/ui/LiveGameFeed'
+import Leaderboard from '@/components/ui/Leaderboard'
+import { useToast } from '@/components/ui/Toast'
 
 const JackpotPage = memo(() => {
   const { gameActions } = useSound()
-  const { user, updateUser } = useUser()
+  const { guestUser: user, syncWithBackend } = useGuest()
+  const { showToast, ToastComponent } = useToast()
   const [isLoading, setIsLoading] = useState(true)
   const [isJoining, setIsJoining] = useState(false)
   const [selectedSkins, setSelectedSkins] = useState<string[]>([])
@@ -27,7 +31,6 @@ const JackpotPage = memo(() => {
   const [roundNumber, setRoundNumber] = useState(2847)
   const [recentDrops, setRecentDrops] = useState<any[]>([])
   const [showWinnerModal, setShowWinnerModal] = useState(false)
-  const [showToast, setShowToast] = useState<{type: 'success' | 'error', message: string} | null>(null)
   const [betAmount, setBetAmount] = useState(10)
 
   // Define participants data first
@@ -100,10 +103,7 @@ const JackpotPage = memo(() => {
           gameActions.winJackpot()
         }, 500)
         
-        setShowToast({
-          type: 'success',
-          message: `🎉 ${gameWinner.user} won the jackpot! $${totalPotValue.toFixed(2)}`
-        })
+        showToast('success', `🎉 ${gameWinner.user} won the jackpot! $${totalPotValue.toFixed(2)}`)
         
         // Add to recent drops
         setRecentDrops(prev => [{
@@ -145,10 +145,7 @@ const JackpotPage = memo(() => {
         setParticipantCount(prev => prev + 1)
         setTotalPotValue(prev => prev + joinValue)
         
-        setShowToast({
-          type: 'success',
-          message: `👋 ${randomName} joined with ${Math.floor(Math.random() * 5 + 1)} skins`
-        })
+        showToast('success', `👋 ${randomName} joined with ${Math.floor(Math.random() * 5 + 1)} skins`)
       }
       
       // Simulate pot value fluctuations
@@ -161,31 +158,25 @@ const JackpotPage = memo(() => {
   }, [isCountingDown, isSpinning, participantCount])
 
   const joinJackpot = async () => {
-    if (!user || betAmount <= 0 || betAmount > user.balance || isJoining) {
+    if (!user?.backendId || betAmount <= 0 || betAmount > user.balance || isJoining) {
       return
     }
 
     setIsJoining(true)
     try {
-      const response = await api.placeBet(user.id, 'jackpot', betAmount) as any
-      if (response.success) {
-        updateUser(response.user)
+      const response = await api.playJackpot(user.backendId, betAmount)
+      if (response.success && response.data) {
+        await syncWithBackend()
         setTotalPotValue(prev => prev + betAmount)
         setParticipantCount(prev => prev + 1)
         
-        setShowToast({
-          type: 'success',
-          message: `🎰 Joined jackpot with $${betAmount}!`
-        })
+        showToast('success', `🎰 Joined jackpot with $${betAmount}!`)
         
         gameActions.placeBet()
       }
     } catch (error) {
       console.error('Error joining jackpot:', error)
-      setShowToast({
-        type: 'error',
-        message: 'Failed to join jackpot. Please try again.'
-      })
+      showToast('error', 'Failed to join jackpot. Please try again.')
     } finally {
       setIsJoining(false)
     }
@@ -200,27 +191,7 @@ const JackpotPage = memo(() => {
 
   const quickAmounts = [5, 10, 25, 50, 100]
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-yellow-900 to-gray-900 text-white flex items-center justify-center p-4">
-        <EnhancedCard variant="glow" className="text-center max-w-md w-full">
-          <div className="p-8">
-            <div className="text-6xl mb-4">🎰</div>
-            <h2 className="text-2xl font-bold mb-4">Please log in to play Jackpot</h2>
-            <p className="text-gray-400 mb-6">You need to be logged in to place bets and track your progress.</p>
-            <EnhancedButton 
-              variant="primary" 
-              size="lg"
-              onClick={() => { window.location.href = '/test-backend' }}
-              className="w-full"
-            >
-              Go to Login Page
-            </EnhancedButton>
-          </div>
-        </EnhancedCard>
-      </div>
-    )
-  }
+  // Allow spectating without login - only restrict betting
 
   if (isLoading) {
     return (
@@ -240,43 +211,41 @@ const JackpotPage = memo(() => {
           className="text-center mb-8"
         >
           <h1 className="text-4xl md:text-6xl font-bold mb-4">
-            🎰 <span className="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">Jackpot</span>
+            🎰 <span className="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">CS2 Skin Jackpot</span>
           </h1>
           <p className="text-xl text-gray-300 mb-6">
-            Winner takes all! Join the pot and spin for glory!
+            Deposit your CS2 skins and winner takes the entire pot!
           </p>
           
-          {/* User Stats */}
-          <div className="flex flex-wrap justify-center gap-4 mb-8">
-            <EnhancedCard variant="stats" className="px-6 py-3">
-              <div className="text-center">
-                <div className="text-sm text-gray-400">Balance</div>
-                <div className="text-xl font-bold text-green-400">${user.balance.toFixed(2)}</div>
-              </div>
-            </EnhancedCard>
-            <EnhancedCard variant="stats" className="px-6 py-3">
-              <div className="text-center">
-                <div className="text-sm text-gray-400">Level</div>
-                <div className="text-xl font-bold text-blue-400">{user.level}</div>
-              </div>
-            </EnhancedCard>
-            {user.stats && (
-              <>
-                <EnhancedCard variant="stats" className="px-6 py-3">
-                  <div className="text-center">
-                    <div className="text-sm text-gray-400">Win Rate</div>
-                    <div className="text-xl font-bold text-green-400">{user.stats.wins}/{user.stats.totalGames}</div>
-                  </div>
-                </EnhancedCard>
-                <EnhancedCard variant="stats" className="px-6 py-3">
-                  <div className="text-center">
-                    <div className="text-sm text-gray-400">Total Won</div>
-                    <div className="text-xl font-bold text-blue-400">${user.stats.totalWon.toFixed(0)}</div>
-                  </div>
-                </EnhancedCard>
-              </>
-            )}
-          </div>
+          {/* User Stats - Only show if logged in */}
+          {user && (
+            <div className="flex flex-wrap justify-center gap-4 mb-8">
+              <EnhancedCard variant="stats" className="px-6 py-3">
+                <div className="text-center">
+                  <div className="text-sm text-gray-400">Balance</div>
+                  <div className="text-xl font-bold text-green-400">${user.balance.toFixed(2)}</div>
+                </div>
+              </EnhancedCard>
+              <EnhancedCard variant="stats" className="px-6 py-3">
+                <div className="text-center">
+                  <div className="text-sm text-gray-400">Games Played</div>
+                  <div className="text-xl font-bold text-blue-400">{user.gamesPlayed}</div>
+                </div>
+              </EnhancedCard>
+              <EnhancedCard variant="stats" className="px-6 py-3">
+                <div className="text-center">
+                  <div className="text-sm text-gray-400">Total Won</div>
+                  <div className="text-xl font-bold text-green-400">${user.totalWon.toFixed(0)}</div>
+                </div>
+              </EnhancedCard>
+              <EnhancedCard variant="stats" className="px-6 py-3">
+                <div className="text-center">
+                  <div className="text-sm text-gray-400">Total Lost</div>
+                  <div className="text-xl font-bold text-red-400">${user.totalLost.toFixed(0)}</div>
+                </div>
+              </EnhancedCard>
+            </div>
+          )}
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -358,50 +327,68 @@ const JackpotPage = memo(() => {
                   )}
                 </div>
 
-                {/* Join Controls */}
+                {/* Join Controls or Spectate Mode */}
                 {!isSpinning && isCountingDown && (
                   <div className="space-y-6">
-                    <div>
-                      <h3 className="text-xl font-bold mb-4">Join the Jackpot</h3>
-                      <EnhancedInput
-                        type="number"
-                        value={betAmount.toString()}
-                        onChange={(value) => setBetAmount(Math.max(0, Number(value)))}
-                        disabled={isJoining}
-                        placeholder="Enter bet amount"
-                        className="w-full mb-4"
-                      />
-                      
-                      {/* Quick bet buttons */}
-                      <div className="grid grid-cols-5 gap-2 mb-6">
-                        {quickAmounts.map((amount) => (
-                          <EnhancedButton
-                            key={amount}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setBetAmount(Math.min(amount, user.balance))}
-                            disabled={isJoining || amount > user.balance}
-                          >
-                            ${amount}
-                          </EnhancedButton>
-                        ))}
+                    {user ? (
+                      <div>
+                        <h3 className="text-xl font-bold mb-4">Join the Jackpot</h3>
+                        <EnhancedInput
+                          type="number"
+                          value={betAmount.toString()}
+                          onChange={(value) => setBetAmount(Math.max(0, Number(value)))}
+                          disabled={isJoining}
+                          placeholder="Enter bet amount"
+                          className="w-full mb-4"
+                        />
+                        
+                        {/* Quick bet buttons */}
+                        <div className="grid grid-cols-5 gap-2 mb-6">
+                          {quickAmounts.map((amount) => (
+                            <EnhancedButton
+                              key={amount}
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setBetAmount(Math.min(amount, user.balance))}
+                              disabled={isJoining || amount > user.balance}
+                            >
+                              ${amount}
+                            </EnhancedButton>
+                          ))}
+                        </div>
+                        
+                        <EnhancedButton
+                          variant="primary"
+                          size="xl"
+                          onClick={joinJackpot}
+                          disabled={betAmount <= 0 || betAmount > user.balance || isJoining}
+                          loading={isJoining}
+                          className="w-full h-16 text-xl font-bold"
+                        >
+                          {isJoining ? '🎰 Joining...' : 
+                           betAmount > 0 && betAmount <= user.balance ? 
+                             `🎰 Join Jackpot ($${betAmount})` : 
+                             'Enter Valid Bet Amount'
+                          }
+                        </EnhancedButton>
                       </div>
-                      
-                      <EnhancedButton
-                        variant="primary"
-                        size="xl"
-                        onClick={joinJackpot}
-                        disabled={!user || betAmount <= 0 || betAmount > user.balance || isJoining}
-                        loading={isJoining}
-                        className="w-full h-16 text-xl font-bold"
-                      >
-                        {isJoining ? '🎰 Joining...' : 
-                         betAmount > 0 && betAmount <= user.balance ? 
-                           `🎰 Join Jackpot ($${betAmount})` : 
-                           'Enter Valid Bet Amount'
-                        }
-                      </EnhancedButton>
-                    </div>
+                    ) : (
+                      <div className="text-center p-6 bg-gray-800/50 rounded-lg border border-gray-700">
+                        <div className="text-4xl mb-4">👀</div>
+                        <h3 className="text-xl font-bold mb-2">Spectate Mode</h3>
+                        <p className="text-gray-400 mb-4">
+                          You're watching the jackpot! Login to join with your CS2 skins.
+                        </p>
+                        <EnhancedButton 
+                          variant="primary" 
+                          size="lg"
+                          onClick={() => { window.location.href = '/test-backend' }}
+                          className="w-full"
+                        >
+                          🔑 Login to Join Jackpot
+                        </EnhancedButton>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -5,37 +5,37 @@ import { Achievement } from './Achievement'
 @Entity('user_achievements')
 export class UserAchievement {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id!: string
 
   @Column({ type: 'jsonb', default: {} })
-  progress: Record<string, any>
+  progress!: Record<string, any>
 
-  @Column({ default: false })
-  isCompleted: boolean
+  @Column({ type: 'boolean', default: false })
+  isCompleted!: boolean
 
-  @Column({ nullable: true })
-  completedAt: Date
+  @Column({ type: 'timestamp', nullable: true })
+  completedAt!: Date
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  rewardClaimed: number
+  rewardClaimed!: number
 
   @CreateDateColumn()
-  createdAt: Date
+  createdAt!: Date
 
   // Relations
   @ManyToOne(() => User, user => user.achievements)
   @JoinColumn({ name: 'userId' })
-  user: User
+  user!: User
 
-  @Column()
-  userId: string
+  @Column({ type: 'uuid' })
+  userId!: string
 
   @ManyToOne(() => Achievement, achievement => achievement.userAchievements)
   @JoinColumn({ name: 'achievementId' })
-  achievement: Achievement
+  achievement!: Achievement
 
-  @Column()
-  achievementId: string
+  @Column({ type: 'uuid' })
+  achievementId!: string
 
   // Virtual properties
   get progressPercentage(): number {

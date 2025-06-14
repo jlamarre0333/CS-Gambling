@@ -3,6 +3,9 @@ import cors from 'cors'
 import axios from 'axios'
 import crypto from 'crypto'
 
+// Import auth routes
+const authRoutes = require('./routes/auth')
+
 const app = express()
 const PORT = process.env.PORT || 3001
 const STEAM_SERVER_URL = 'http://localhost:3002'
@@ -20,13 +23,39 @@ app.use(cors({
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
+// Mount auth routes
+app.use('/api/auth', authRoutes)
+app.use('/api/payments', require('./routes/payments'))
+
+// User profile routes (compatible with existing frontend)
+app.get('/api/user/profile/:steamId', async (req, res) => {
+  try {
+    const { steamId } = req.params
+    
+    // Forward to auth service for user data
+    const response = await axios.get(`http://localhost:${PORT}/api/auth/me`, {
+      headers: req.headers
+    })
+    
+    if (response.data.user) {
+      res.json(response.data.user)
+    } else {
+      res.status(404).json({ error: 'User not found' })
+    }
+  } catch (error) {
+    console.error('Error fetching user profile:', error)
+    res.status(500).json({ error: 'Failed to fetch user profile' })
+  }
+})
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     message: 'Backend server is running',
     timestamp: new Date().toISOString(),
-    port: PORT
+    port: PORT,
+    features: ['steam-auth', 'jwt-auth', 'inventory', 'user-profiles']
   })
 })
 

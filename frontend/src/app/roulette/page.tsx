@@ -1,21 +1,24 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useUser } from '@/contexts/UserContext'
+import { useGuest } from '@/contexts/GuestContext'
 import { api } from '@/lib/api'
 import EnhancedButton from '@/components/ui/EnhancedButton'
 import { EnhancedCard } from '@/components/ui/EnhancedCard'
 import { EnhancedInput } from '@/components/ui/EnhancedInput'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import LiveGameFeed from '@/components/ui/LiveGameFeed'
+import Leaderboard from '@/components/ui/Leaderboard'
+import { useToast } from '@/components/ui/Toast'
 
 export default function RoulettePage() {
-  const { user, updateUser } = useUser()
+  const { guestUser: user, syncWithBackend } = useGuest()
+  const { showToast, ToastComponent } = useToast()
   const [selectedBet, setSelectedBet] = useState<string | null>(null)
   const [betAmount, setBetAmount] = useState(10)
   const [isSpinning, setIsSpinning] = useState(false)
   const [gameResult, setGameResult] = useState<{number: number, color: string} | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [showToast, setShowToast] = useState<{type: 'success' | 'error' | 'info', message: string} | null>(null)
 
   const betOptions = [
     { type: 'red', label: 'Red', multiplier: '2x', color: 'bg-red-600', emoji: '🔴' },
@@ -24,7 +27,7 @@ export default function RoulettePage() {
   ]
 
   const placeBet = async () => {
-    if (!selectedBet || !user || betAmount <= 0 || betAmount > user.balance || isSpinning) {
+    if (!selectedBet || !user?.backendId || betAmount <= 0 || betAmount > user.balance || isSpinning) {
       return
     }
     
@@ -34,21 +37,19 @@ export default function RoulettePage() {
     try {
       setTimeout(async () => {
         try {
-          const response = await api.placeBet(user.id, 'roulette', betAmount, {
-            betType: selectedBet
-          }) as any
+          const response = await api.playRoulette(user.backendId!, betAmount, selectedBet as 'red' | 'black' | 'green')
           
-          if (response.success) {
-            const spinResult = response.game.gameData.spinResult
+          if (response.success && response.data) {
+            const spinResult = response.data.game.result
             setGameResult(spinResult)
-            updateUser(response.user)
+            await syncWithBackend()
             
             // Show result toast
             const won = selectedBet === spinResult.color
-            setShowToast({
-              type: won ? 'success' : 'error',
-              message: won ? `🎉 You won $${betAmount * (selectedBet === 'green' ? 14 : 2)}!` : `💔 You lost $${betAmount}`
-            })
+            showToast(
+              won ? 'success' : 'error',
+              won ? `🎉 You won $${betAmount * (selectedBet === 'green' ? 14 : 2)}!` : `💔 You lost $${betAmount}`
+            )
             
             setTimeout(() => {
               setIsSpinning(false)
@@ -59,45 +60,19 @@ export default function RoulettePage() {
         } catch (error) {
           console.error('Error placing bet:', error)
           setIsSpinning(false)
-          setShowToast({
-            type: 'error',
-            message: 'Failed to place bet. Please try again.'
-          })
+          showToast('error', 'Failed to place bet. Please try again.')
         }
       }, 2000)
     } catch (error) {
       console.error('Error spinning wheel:', error)
       setIsSpinning(false)
-      setShowToast({
-        type: 'error',
-        message: 'Connection error. Please try again.'
-      })
+      showToast('error', 'Connection error. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white flex items-center justify-center p-4">
-        <EnhancedCard variant="glow" className="text-center max-w-md w-full">
-          <div className="p-8">
-            <div className="text-6xl mb-4">🎯</div>
-            <h2 className="text-2xl font-bold mb-4">Please log in to play Roulette</h2>
-            <p className="text-gray-400 mb-6">You need to be logged in to place bets and track your progress.</p>
-                          <EnhancedButton 
-                variant="primary" 
-                size="lg"
-                onClick={() => { window.location.href = '/test-backend' }}
-                className="w-full"
-              >
-              Go to Login Page
-            </EnhancedButton>
-          </div>
-        </EnhancedCard>
-      </div>
-    )
-  }
+  // Allow spectating without login - only restrict betting
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white">
@@ -105,16 +80,21 @@ export default function RoulettePage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent mb-4">
-            🎯 Roulette
+            🎯 CS2 Skin Roulette
           </h1>
-          <EnhancedCard variant="stats" className="inline-block">
-            <div className="px-6 py-3">
-              <div className="text-xl font-semibold">Balance: ${user.balance.toFixed(2)}</div>
-            </div>
-          </EnhancedCard>
+          <p className="text-xl text-gray-300 mb-6">
+            Bet your CS2 skins on Red, Black, or Green!
+          </p>
+          {user && (
+            <EnhancedCard variant="stats" className="inline-block">
+              <div className="px-6 py-3">
+                <div className="text-xl font-semibold">Balance: ${user.balance.toFixed(2)}</div>
+              </div>
+            </EnhancedCard>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Roulette Wheel */}
           <div className="flex flex-col items-center">
             <EnhancedCard variant="game" className="w-full max-w-md">
@@ -157,7 +137,7 @@ export default function RoulettePage() {
           </div>
 
           {/* Betting Panel */}
-          <div className="space-y-6">
+          <div className="space-y-6 lg:col-span-1">
             {/* Betting Options */}
             <EnhancedCard variant="default" className="p-6">
               <h3 className="text-xl font-bold mb-4 text-center">Choose Your Bet</h3>
@@ -179,70 +159,86 @@ export default function RoulettePage() {
               </div>
             </EnhancedCard>
 
-            {/* Bet Amount */}
-            <EnhancedCard variant="default" className="p-6">
-              <h3 className="text-xl font-bold mb-4">Bet Amount</h3>
-              <EnhancedInput
-                type="number"
-                value={betAmount.toString()}
-                onChange={(value) => setBetAmount(Math.max(0, Number(value)))}
-                disabled={isSpinning}
-                placeholder="Enter bet amount"
-                className="w-full"
-              />
-              
-              {/* Quick bet buttons */}
-              <div className="grid grid-cols-4 gap-2 mt-4">
-                {[10, 25, 50, 100].map((amount) => (
-                  <EnhancedButton
-                    key={amount}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setBetAmount(Math.min(amount, user.balance))}
-                    disabled={isSpinning || amount > user.balance}
-                  >
-                    ${amount}
-                  </EnhancedButton>
-                ))}
-              </div>
-            </EnhancedCard>
+            {/* Betting Controls or Spectate Mode */}
+            {user ? (
+              <>
+                {/* Bet Amount */}
+                <EnhancedCard variant="default" className="p-6">
+                  <h3 className="text-xl font-bold mb-4">Bet Amount</h3>
+                  <EnhancedInput
+                    type="number"
+                    value={betAmount.toString()}
+                    onChange={(value) => setBetAmount(Math.max(0, Number(value)))}
+                    disabled={isSpinning}
+                    placeholder="Enter bet amount"
+                    className="w-full"
+                  />
+                  
+                  {/* Quick bet buttons */}
+                  <div className="grid grid-cols-4 gap-2 mt-4">
+                    {[10, 25, 50, 100].map((amount) => (
+                      <EnhancedButton
+                        key={amount}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setBetAmount(Math.min(amount, user.balance))}
+                        disabled={isSpinning || amount > user.balance}
+                      >
+                        ${amount}
+                      </EnhancedButton>
+                    ))}
+                  </div>
+                </EnhancedCard>
 
-            {/* Spin Button */}
-            <EnhancedButton
-              variant="primary"
-              size="xl"
-              onClick={placeBet}
-              disabled={!selectedBet || !user || betAmount <= 0 || betAmount > user.balance || isSpinning || isLoading}
-              loading={isLoading || isSpinning}
-              className="w-full h-16 text-xl font-bold"
-            >
-              {isLoading ? '🔄 Placing Bet...' : 
-               isSpinning ? '🎡 Spinning...' :
-               selectedBet && betAmount > 0 && betAmount <= user.balance ? 
-                 `🚀 Spin ${selectedBet.toUpperCase()} ($${betAmount})` : 
-                 'Select Bet and Amount'
-              }
-            </EnhancedButton>
+                {/* Spin Button */}
+                <EnhancedButton
+                  variant="primary"
+                  size="xl"
+                  onClick={placeBet}
+                  disabled={!selectedBet || betAmount <= 0 || betAmount > user.balance || isSpinning || isLoading}
+                  loading={isLoading || isSpinning}
+                  className="w-full h-16 text-xl font-bold"
+                >
+                  {isLoading ? '🔄 Placing Bet...' : 
+                   isSpinning ? '🎡 Spinning...' :
+                   selectedBet && betAmount > 0 && betAmount <= user.balance ? 
+                     `🚀 Spin ${selectedBet.toUpperCase()} ($${betAmount})` : 
+                     'Select Bet and Amount'
+                  }
+                </EnhancedButton>
+              </>
+            ) : (
+              <EnhancedCard variant="default" className="p-6 text-center">
+                <div className="text-4xl mb-4">👀</div>
+                <h3 className="text-xl font-bold mb-2">Spectate Mode</h3>
+                <p className="text-gray-400 mb-4">
+                  You're watching the roulette! Login to bet with your CS2 skins.
+                </p>
+                <EnhancedButton 
+                  variant="primary" 
+                  size="lg"
+                  onClick={() => { window.location.href = '/test-backend' }}
+                  className="w-full"
+                >
+                  🔑 Login to Play Roulette
+                </EnhancedButton>
+              </EnhancedCard>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Live Game Feed */}
+            <LiveGameFeed maxItems={6} />
+
+            {/* Leaderboard */}
+            <Leaderboard maxEntries={5} />
           </div>
         </div>
       </div>
 
       {/* Toast Notifications */}
-      {showToast && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-          showToast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-        } text-white`}>
-          <div className="flex items-center justify-between">
-            <span>{showToast.message}</span>
-            <button 
-              onClick={() => setShowToast(null)}
-              className="ml-4 text-white hover:text-gray-200"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
+      {ToastComponent}
     </div>
   )
 } 

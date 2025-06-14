@@ -1,113 +1,103 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '@/contexts/AuthContext'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
-const LoginSuccessPage = () => {
+export default function LoginSuccess() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, isAuthenticated } = useAuth()
-  const [isProcessing, setIsProcessing] = useState(true)
-  const [error, setError] = useState('')
+  const { login } = useAuth()
+  const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
+  const [message, setMessage] = useState('Processing login...')
 
   useEffect(() => {
-    const processLogin = async () => {
+    const handleLoginSuccess = async () => {
       try {
-        const userData = searchParams.get('user')
-        const token = searchParams.get('token')
+        const userParam = searchParams.get('user')
+        const tokenParam = searchParams.get('token')
 
-        if (userData && token) {
-          const user = JSON.parse(decodeURIComponent(userData))
-          
-          // Store user data in localStorage (the AuthContext will pick it up)
-          localStorage.setItem('steamUser', JSON.stringify(user))
-          localStorage.setItem('steamToken', token)
-          
-          console.log('Steam login successful:', user.username)
-          
-          // Redirect to homepage after a short delay
-          setTimeout(() => {
-            router.push('/')
-          }, 2000)
-        } else {
-          setError('Invalid authentication data')
+        if (!userParam || !tokenParam) {
+          setStatus('error')
+          setMessage('Invalid login data received')
+          setTimeout(() => window.location.href = '/', 2000)
+          return
         }
+
+        // Parse user data from URL
+        const userData = JSON.parse(decodeURIComponent(userParam))
+        
+        // Store session data in localStorage
+        localStorage.setItem('steam_user', JSON.stringify(userData))
+        localStorage.setItem('steam_token', tokenParam)
+        localStorage.setItem('steam_login_time', new Date().toISOString())
+
+        setStatus('success')
+        setMessage('Login successful! Redirecting...')
+        
+        // Multiple redirect strategies for maximum reliability
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 1000)
+        
+        // Backup redirect after 3 seconds
+        setTimeout(() => {
+          if (window.location.pathname.includes('/login/success')) {
+            window.location.replace('/')
+          }
+        }, 3000)
+
       } catch (error) {
-        console.error('Error processing login:', error)
-        setError('Failed to process login')
-      } finally {
-        setIsProcessing(false)
+        console.error('Login processing failed:', error)
+        setStatus('error')
+        setMessage('Failed to process login')
+        setTimeout(() => window.location.href = '/', 2000)
       }
     }
 
-    processLogin()
-  }, [searchParams, router])
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-gaming flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-gaming-card border border-red-500/20 rounded-2xl p-8 max-w-md w-full text-center"
-        >
-          <div className="text-red-400 text-6xl mb-4">❌</div>
-          <h1 className="text-2xl font-bold text-white mb-4">Login Failed</h1>
-          <p className="text-gray-300 mb-6">{error}</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300"
-          >
-            Try Again
-          </button>
-        </motion.div>
-      </div>
-    )
-  }
+    handleLoginSuccess()
+  }, [searchParams])
 
   return (
-    <div className="min-h-screen bg-gradient-gaming flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-gaming-card border border-green-500/20 rounded-2xl p-8 max-w-md w-full text-center"
-      >
-        {isProcessing ? (
-          <>
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="text-accent-primary text-6xl mb-4"
-            >
-              <ArrowPathIcon className="w-16 h-16 mx-auto" />
-            </motion.div>
-            <h1 className="text-2xl font-bold text-white mb-4">Processing Login...</h1>
-            <p className="text-gray-300">Please wait while we complete your Steam authentication.</p>
-          </>
-        ) : (
-          <>
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="text-green-400 text-6xl mb-4"
-            >
-              <CheckCircleIcon className="w-16 h-16 mx-auto" />
-            </motion.div>
-            <h1 className="text-2xl font-bold text-white mb-4">Login Successful!</h1>
-            <p className="text-gray-300 mb-6">Welcome to CS Gambling! Redirecting you to the homepage...</p>
-            <div className="flex items-center justify-center space-x-2 text-accent-primary">
-              <ArrowPathIcon className="w-4 h-4 animate-spin" />
-              <span>Redirecting...</span>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+      <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-2xl p-8 max-w-md w-full text-center">
+        <div className="mb-6">
+          <LoadingSpinner size="lg" />
+        </div>
+        
+        <h1 className="text-2xl font-bold text-white mb-4">
+          {status === 'processing' && 'Processing Login...'}
+          {status === 'success' && 'Login Successful!'}
+          {status === 'error' && 'Login Failed'}
+        </h1>
+        
+        <p className="text-gray-400 mb-6">
+          {message}
+        </p>
+        
+                         {status === 'success' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-center space-x-2 text-green-400">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span>Redirecting to homepage...</span>
             </div>
-          </>
+            <button
+              onClick={() => window.location.href = '/'}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+            >
+              Continue to Homepage
+            </button>
+          </div>
         )}
-      </motion.div>
+        
+        {status === 'error' && (
+          <div className="flex items-center justify-center space-x-2 text-red-400">
+            <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+            <span>Redirecting to home...</span>
+          </div>
+        )}
+      </div>
     </div>
   )
-}
-
-export default LoginSuccessPage 
+} 

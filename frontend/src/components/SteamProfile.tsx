@@ -16,6 +16,9 @@ import {
 import { EnhancedCard } from './ui/EnhancedCard'
 import LoadingSpinner from './ui/LoadingSpinner'
 import { useAuth } from '@/contexts/AuthContext'
+import { useMobile } from '@/hooks/useMobile'
+import { useTheme } from '@/contexts/ThemeContext'
+import SteamInventory from './SteamInventory'
 
 interface SteamProfileData {
   steamId: string
@@ -46,6 +49,8 @@ interface UserStats {
 
 const SteamProfile: React.FC = () => {
   const { user } = useAuth()
+  const { hapticFeedback, isMobile, screenSize, optimizeTouch } = useMobile()
+  const { isDark } = useTheme()
   const [profileData, setProfileData] = useState<SteamProfileData | null>(null)
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -148,15 +153,35 @@ const SteamProfile: React.FC = () => {
           <motion.div
             className="relative"
             whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300 }}
+            onClick={() => hapticFeedback('light')}
+            style={{ 
+              cursor: 'pointer',
+              minWidth: isMobile ? '96px' : '96px',
+              minHeight: isMobile ? '96px' : '96px'
+            }}
           >
             <img
               src={user.avatar || '/default-avatar.png'}
               alt={user.username}
-              className="w-24 h-24 rounded-full border-4 border-orange-500/50"
+              className={`
+                ${isMobile ? 'w-28 h-28' : 'w-24 h-24'} 
+                rounded-full border-4 border-orange-500/50 
+                ${isDark ? 'shadow-lg shadow-orange-500/20' : 'shadow-lg shadow-orange-500/30'}
+              `}
             />
-            <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-2 border-gray-900 flex items-center justify-center">
-              <div className="w-3 h-3 bg-white rounded-full"></div>
+            <div className={`
+              absolute -bottom-2 -right-2 
+              ${isMobile ? 'w-10 h-10' : 'w-8 h-8'} 
+              bg-green-500 rounded-full border-2 
+              ${isDark ? 'border-gray-900' : 'border-white'} 
+              flex items-center justify-center
+            `}>
+              <div className={`
+                ${isMobile ? 'w-4 h-4' : 'w-3 h-3'} 
+                bg-white rounded-full
+              `}></div>
             </div>
           </motion.div>
 
@@ -191,7 +216,7 @@ const SteamProfile: React.FC = () => {
 
               <div className="flex items-center space-x-2">
                 <CalendarIcon className="w-4 h-4" />
-                <span>Member since {user.memberSince.toLocaleDateString()}</span>
+                <span>Member since {user.memberSince?.toLocaleDateString() || 'N/A'}</span>
               </div>
             </div>
 
@@ -209,10 +234,26 @@ const SteamProfile: React.FC = () => {
           </div>
 
           {/* Balance */}
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-400">${user.balance.toFixed(2)}</div>
-            <div className="text-gray-400 text-sm">Current Balance</div>
-          </div>
+          <motion.div 
+            className="text-center"
+            whileTap={{ scale: 0.98 }}
+            onClick={() => hapticFeedback('light')}
+            style={{ cursor: 'pointer' }}
+          >
+            <div className={`
+              ${isMobile ? 'text-4xl' : 'text-3xl'} 
+              font-bold text-green-400 
+              ${isDark ? '' : 'drop-shadow-sm'}
+            `}>
+              ${(user.balance ?? 0).toFixed(2)}
+            </div>
+            <div className={`
+              ${isDark ? 'text-gray-400' : 'text-gray-600'} 
+              ${isMobile ? 'text-base' : 'text-sm'}
+            `}>
+              Current Balance
+            </div>
+          </motion.div>
         </div>
       </EnhancedCard>
 
@@ -246,30 +287,130 @@ const SteamProfile: React.FC = () => {
 
       {/* Stats Grid */}
       {userStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <EnhancedCard variant="stats" className="p-6 text-center">
-            <CurrencyDollarIcon className="w-8 h-8 text-green-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">${userStats.totalWagered.toFixed(0)}</div>
-            <div className="text-gray-400 text-sm">Total Wagered</div>
-          </EnhancedCard>
+        <div className={`
+          grid gap-4 
+          ${screenSize.isSmall ? 'grid-cols-1' : screenSize.isMedium ? 'grid-cols-2' : 'grid-cols-4'}
+          ${isMobile ? 'gap-4' : 'gap-6'}
+        `}>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => hapticFeedback('light')}
+          >
+            <EnhancedCard variant="stats" className={`
+              ${isMobile ? 'p-4' : 'p-6'} 
+              text-center cursor-pointer transition-all duration-200
+              ${isDark ? 'hover:bg-gray-800/60' : 'hover:bg-white/60'}
+            `}>
+              <CurrencyDollarIcon className={`
+                ${isMobile ? 'w-10 h-10' : 'w-8 h-8'} 
+                text-green-400 mx-auto mb-2
+              `} />
+              <div className={`
+                ${isMobile ? 'text-3xl' : 'text-2xl'} 
+                font-bold 
+                ${isDark ? 'text-white' : 'text-gray-900'}
+              `}>
+                ${userStats.totalWagered.toFixed(0)}
+              </div>
+              <div className={`
+                ${isDark ? 'text-gray-400' : 'text-gray-600'} 
+                ${isMobile ? 'text-base' : 'text-sm'}
+              `}>
+                Total Wagered
+              </div>
+            </EnhancedCard>
+          </motion.div>
 
-          <EnhancedCard variant="stats" className="p-6 text-center">
-            <TrophyIcon className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">${userStats.totalWon.toFixed(0)}</div>
-            <div className="text-gray-400 text-sm">Total Won</div>
-          </EnhancedCard>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => hapticFeedback('light')}
+          >
+            <EnhancedCard variant="stats" className={`
+              ${isMobile ? 'p-4' : 'p-6'} 
+              text-center cursor-pointer transition-all duration-200
+              ${isDark ? 'hover:bg-gray-800/60' : 'hover:bg-white/60'}
+            `}>
+              <TrophyIcon className={`
+                ${isMobile ? 'w-10 h-10' : 'w-8 h-8'} 
+                text-yellow-400 mx-auto mb-2
+              `} />
+              <div className={`
+                ${isMobile ? 'text-3xl' : 'text-2xl'} 
+                font-bold 
+                ${isDark ? 'text-white' : 'text-gray-900'}
+              `}>
+                ${userStats.totalWon.toFixed(0)}
+              </div>
+              <div className={`
+                ${isDark ? 'text-gray-400' : 'text-gray-600'} 
+                ${isMobile ? 'text-base' : 'text-sm'}
+              `}>
+                Total Won
+              </div>
+            </EnhancedCard>
+          </motion.div>
 
-          <EnhancedCard variant="stats" className="p-6 text-center">
-            <ChartBarIcon className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{userStats.winRate.toFixed(1)}%</div>
-            <div className="text-gray-400 text-sm">Win Rate</div>
-          </EnhancedCard>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => hapticFeedback('light')}
+          >
+            <EnhancedCard variant="stats" className={`
+              ${isMobile ? 'p-4' : 'p-6'} 
+              text-center cursor-pointer transition-all duration-200
+              ${isDark ? 'hover:bg-gray-800/60' : 'hover:bg-white/60'}
+            `}>
+              <ChartBarIcon className={`
+                ${isMobile ? 'w-10 h-10' : 'w-8 h-8'} 
+                text-blue-400 mx-auto mb-2
+              `} />
+              <div className={`
+                ${isMobile ? 'text-3xl' : 'text-2xl'} 
+                font-bold 
+                ${isDark ? 'text-white' : 'text-gray-900'}
+              `}>
+                {userStats.winRate.toFixed(1)}%
+              </div>
+              <div className={`
+                ${isDark ? 'text-gray-400' : 'text-gray-600'} 
+                ${isMobile ? 'text-base' : 'text-sm'}
+              `}>
+                Win Rate
+              </div>
+            </EnhancedCard>
+          </motion.div>
 
-          <EnhancedCard variant="stats" className="p-6 text-center">
-            <FireIcon className="w-8 h-8 text-orange-400 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{userStats.gamesPlayed}</div>
-            <div className="text-gray-400 text-sm">Games Played</div>
-          </EnhancedCard>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => hapticFeedback('light')}
+          >
+            <EnhancedCard variant="stats" className={`
+              ${isMobile ? 'p-4' : 'p-6'} 
+              text-center cursor-pointer transition-all duration-200
+              ${isDark ? 'hover:bg-gray-800/60' : 'hover:bg-white/60'}
+            `}>
+              <FireIcon className={`
+                ${isMobile ? 'w-10 h-10' : 'w-8 h-8'} 
+                text-orange-400 mx-auto mb-2
+              `} />
+              <div className={`
+                ${isMobile ? 'text-3xl' : 'text-2xl'} 
+                font-bold 
+                ${isDark ? 'text-white' : 'text-gray-900'}
+              `}>
+                {userStats.gamesPlayed}
+              </div>
+              <div className={`
+                ${isDark ? 'text-gray-400' : 'text-gray-600'} 
+                ${isMobile ? 'text-base' : 'text-sm'}
+              `}>
+                Games Played
+              </div>
+            </EnhancedCard>
+          </motion.div>
         </div>
       )}
 
@@ -315,7 +456,7 @@ const SteamProfile: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Last Login:</span>
-                <span className="text-white font-semibold">{user.lastLoginAt.toLocaleDateString()}</span>
+                <span className="text-white font-semibold">{user.lastLoginAt?.toLocaleDateString() || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Status:</span>
@@ -328,6 +469,11 @@ const SteamProfile: React.FC = () => {
           </EnhancedCard>
         </div>
       )}
+
+      {/* Steam Inventory Section */}
+      <div className="mt-8">
+        <SteamInventory />
+      </div>
     </div>
   )
 }

@@ -4,16 +4,20 @@ import React, { useState, useEffect } from 'react'
 import { ArrowTrendingUpIcon, BoltIcon, ClockIcon, CubeIcon, ChartBarIcon, CogIcon } from '@heroicons/react/24/outline'
 import { useSound } from '@/hooks/useSound'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useUser } from '@/contexts/UserContext'
+import { useGuest } from '@/contexts/GuestContext'
 import { api } from '@/lib/api'
 import EnhancedButton from '@/components/ui/EnhancedButton'
 import { EnhancedCard } from '@/components/ui/EnhancedCard'
 import { EnhancedInput } from '@/components/ui/EnhancedInput'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import LiveGameFeed from '@/components/ui/LiveGameFeed'
+import Leaderboard from '@/components/ui/Leaderboard'
+import { useToast } from '@/components/ui/Toast'
 
 const CrashPage = () => {
   const { gameActions } = useSound()
-  const { user, updateUser } = useUser()
+  const { guestUser: user, syncWithBackend } = useGuest()
+  const { showToast, ToastComponent } = useToast()
   const [betAmount, setBetAmount] = useState(10)
   const [autoCashout, setAutoCashout] = useState('')
   const [currentMultiplier, setCurrentMultiplier] = useState(1.00)
@@ -22,27 +26,26 @@ const CrashPage = () => {
   const [gameHistory, setGameHistory] = useState<Array<{round: string, multiplier: number, time: string}>>([])
   const [currentGameId, setCurrentGameId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [showToast, setShowToast] = useState<{type: 'success' | 'error', message: string} | null>(null)
 
   // Load user's game history
   useEffect(() => {
-    if (user) {
+    if (user?.backendId) {
       loadGameHistory()
     }
   }, [user])
 
   const loadGameHistory = async () => {
-    if (!user) return
+    if (!user?.backendId) return
     try {
-      const response = await api.getGameHistory(user.id) as any
-      if (response.success) {
+      const response = await api.getUserGames(user.backendId)
+      if (response.success && response.data) {
         // Convert to crash history format
-        const crashGames = response.games
+        const crashGames = response.data.games
           .filter((game: any) => game.gameType === 'crash')
           .slice(0, 10)
           .map((game: any) => ({
             round: `R#${game.id.slice(-4)}`,
-            multiplier: game.multiplier || 0,
+            multiplier: game.result?.crashPoint || 0,
             time: getTimeAgo(game.timestamp)
           }))
         setGameHistory(crashGames)
@@ -80,10 +83,7 @@ const CrashPage = () => {
             setGameState('crashed')
             gameActions.crashExplosion()
             
-            setShowToast({
-              type: 'error',
-              message: `💥 Crashed at ${newMultiplier.toFixed(2)}x!`
-            })
+            showToast('error', `💥 Crashed at ${newMultiplier.toFixed(2)}x!`)
             
             // Add to history
             setGameHistory(prev => [
@@ -112,58 +112,47 @@ const CrashPage = () => {
   }, [gameState, autoCashout, isPlaying, gameActions])
 
   const startGame = async () => {
-    if (gameState !== 'waiting' || !user || betAmount <= 0 || betAmount > user.balance) {
+    if (gameState !== 'waiting' || !user?.backendId || betAmount <= 0 || betAmount > user.balance) {
       return
     }
 
     setIsLoading(true)
     try {
       // Place bet on backend
-      const response = await api.placeBet(user.id, 'crash', betAmount) as any
-      if (response.success) {
-        setCurrentGameId(response.game.id)
-        updateUser(response.user) // Update user balance
+      const response = await api.playCrash(user.backendId, betAmount)
+      if (response.success && response.data) {
+        setCurrentGameId(response.data.game.id)
+        await syncWithBackend() // Update user balance
         gameActions.placeBet()
         gameActions.crashTakeoff()
         setGameState('running')
         setIsPlaying(true)
         
-        setShowToast({
-          type: 'success',
-          message: `🚀 Game started! Bet: $${betAmount}`
-        })
+        showToast('success', `🚀 Game started! Bet: $${betAmount}`)
       }
     } catch (error) {
       console.error('Error starting game:', error)
-      setShowToast({
-        type: 'error',
-        message: 'Failed to start game. Please try again.'
-      })
+      showToast('error', 'Failed to start game. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
   const cashOut = async () => {
-    if (gameState !== 'running' || !isPlaying || !currentGameId || !user) {
+    if (gameState !== 'running' || !isPlaying || !currentGameId || !user?.backendId) {
       return
     }
 
     setIsLoading(true)
     try {
       // Cash out with current multiplier
-      const response = await api.placeBet(user.id, 'crash', betAmount, {
-        multiplier: currentMultiplier
-      }) as any
+      const response = await api.playCrash(user.backendId, betAmount, currentMultiplier)
       
-      if (response.success) {
+      if (response.success && response.data) {
         const winnings = betAmount * currentMultiplier
-        updateUser(response.user) // Update user balance
+        await syncWithBackend() // Update user balance
         
-        setShowToast({
-          type: 'success',
-          message: `💰 Cashed out at ${currentMultiplier.toFixed(2)}x! Won $${winnings.toFixed(2)}`
-        })
+        showToast('success', `💰 Cashed out at ${currentMultiplier.toFixed(2)}x! Won $${winnings.toFixed(2)}`)
         
         if (winnings > 200) {
           gameActions.winBig()
@@ -179,10 +168,7 @@ const CrashPage = () => {
       }
     } catch (error) {
       console.error('Error cashing out:', error)
-      setShowToast({
-        type: 'error',
-        message: 'Failed to cash out. Please try again.'
-      })
+      showToast('error', 'Failed to cash out. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -198,15 +184,23 @@ const CrashPage = () => {
         <EnhancedCard variant="glow" className="text-center max-w-md w-full">
           <div className="p-8">
             <div className="text-6xl mb-4">🚀</div>
-            <h2 className="text-2xl font-bold mb-4">Please log in to play Crash</h2>
-            <p className="text-gray-400 mb-6">You need to be logged in to place bets and track your progress.</p>
+            <h2 className="text-2xl font-bold mb-4">Crash Game - Spectate Mode</h2>
+            <p className="text-gray-400 mb-6">Watch the rocket crash! Login with Steam when you're ready to place bets.</p>
             <EnhancedButton 
               variant="primary" 
               size="lg"
-              onClick={() => { window.location.href = '/test-backend' }}
+              onClick={() => { window.location.href = 'http://localhost:3001/api/steam-auth/login' }}
               className="w-full"
             >
-              Go to Login Page
+              🎮 Login with Steam to Play
+            </EnhancedButton>
+            <EnhancedButton 
+              variant="secondary" 
+              size="sm"
+              onClick={() => { window.location.href = '/' }}
+              className="w-full mt-2"
+            >
+              Back to Homepage
             </EnhancedButton>
           </div>
         </EnhancedCard>
@@ -240,26 +234,22 @@ const CrashPage = () => {
             </EnhancedCard>
             <EnhancedCard variant="stats" className="px-6 py-3">
               <div className="text-center">
-                <div className="text-sm text-gray-400">Level</div>
-                <div className="text-xl font-bold text-blue-400">{user.level}</div>
+                <div className="text-sm text-gray-400">Games Played</div>
+                <div className="text-xl font-bold text-blue-400">{user.gamesPlayed}</div>
               </div>
             </EnhancedCard>
-            {user.stats && (
-              <>
-                <EnhancedCard variant="stats" className="px-6 py-3">
-                  <div className="text-center">
-                    <div className="text-sm text-gray-400">Win Rate</div>
-                    <div className="text-xl font-bold text-green-400">{user.stats.wins}/{user.stats.totalGames}</div>
-                  </div>
-                </EnhancedCard>
-                <EnhancedCard variant="stats" className="px-6 py-3">
-                  <div className="text-center">
-                    <div className="text-sm text-gray-400">Total Won</div>
-                    <div className="text-xl font-bold text-blue-400">${user.stats.totalWon.toFixed(0)}</div>
-                  </div>
-                </EnhancedCard>
-              </>
-            )}
+            <EnhancedCard variant="stats" className="px-6 py-3">
+              <div className="text-center">
+                <div className="text-sm text-gray-400">Total Won</div>
+                <div className="text-xl font-bold text-green-400">${user.totalWon.toFixed(0)}</div>
+              </div>
+            </EnhancedCard>
+            <EnhancedCard variant="stats" className="px-6 py-3">
+              <div className="text-center">
+                <div className="text-sm text-gray-400">Total Lost</div>
+                <div className="text-xl font-bold text-red-400">${user.totalLost.toFixed(0)}</div>
+              </div>
+            </EnhancedCard>
           </div>
         </motion.div>
 
@@ -443,6 +433,12 @@ const CrashPage = () => {
               </div>
             </EnhancedCard>
 
+            {/* Live Game Feed */}
+            <LiveGameFeed maxItems={8} />
+
+            {/* Leaderboard */}
+            <Leaderboard maxEntries={5} />
+
             {/* Recent Crashes */}
             <EnhancedCard variant="default" className="p-6">
               <h3 className="text-xl font-bold mb-4 flex items-center">
@@ -480,21 +476,7 @@ const CrashPage = () => {
       </div>
 
       {/* Toast Notifications */}
-      {showToast && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-          showToast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-        } text-white`}>
-          <div className="flex items-center justify-between">
-            <span>{showToast.message}</span>
-            <button 
-              onClick={() => setShowToast(null)}
-              className="ml-4 text-white hover:text-gray-200"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
+      {ToastComponent}
     </div>
   )
 }

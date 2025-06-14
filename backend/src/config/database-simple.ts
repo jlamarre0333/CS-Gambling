@@ -5,7 +5,7 @@ import { Transaction } from '../entities/Transaction'
 import { ChatMessage } from '../entities/ChatMessage'
 import { Achievement } from '../entities/Achievement'
 import { UserAchievement } from '../entities/UserAchievement'
-import { Tournament } from '../entities/Tournament'
+// Tournament entity removed - not needed for CS2 skin betting
 import { SkinItem } from '../entities/SkinItem'
 import dotenv from 'dotenv'
 import path from 'path'
@@ -25,7 +25,6 @@ export const AppDataSource = new DataSource({
     ChatMessage,
     Achievement,
     UserAchievement,
-    Tournament,
     SkinItem
   ],
 })

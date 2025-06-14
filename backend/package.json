@@ -5,13 +5,13 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/minimal-server.ts",
-    "dev:simple": "tsx watch src/server-simple.ts",
+    "dev:express": "tsx watch src/express-server.ts",
+    "dev:simple": "tsx watch src/server-simple-working.ts",
     "dev:enhanced": "tsx watch src/server-enhanced.ts",
     "dev:test": "tsx watch src/server-test.ts",
     "dev:working": "tsx watch src/server-working.ts",
     "dev:steam": "tsx watch src/server-steam-auth.ts",
     "dev:clean": "tsx watch src/server-steam-clean.ts",
-    "dev:simple": "tsx watch src/server-simple-working.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "jest",
@@ -44,6 +44,7 @@
     "sqlite3": "^5.1.7",
     "steamapi": "^3.1.2",
     "typeorm": "^0.3.17",
+    "uuid": "^9.0.1",
     "ws": "^8.14.2"
   },
   "devDependencies": {
@@ -59,6 +60,7 @@
     "@types/passport": "^1.0.16",
     "@types/passport-steam": "^1.0.4",
     "@types/pg": "^8.10.9",
+    "@types/uuid": "^9.0.8",
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",

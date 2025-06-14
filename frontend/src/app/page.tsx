@@ -17,12 +17,27 @@ import {
   UserIcon
 } from '@heroicons/react/24/outline'
 import { useAuth } from '@/contexts/AuthContext'
+import { useGuest } from '@/contexts/GuestContext'
 import { EnhancedCard } from '@/components/ui/EnhancedCard'
 import EnhancedButton from '@/components/ui/EnhancedButton'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 const HomePage = () => {
   const { user, isAuthenticated, isLoading } = useAuth()
+  const { guestUser } = useGuest()
+  const router = useRouter()
+
+  // Redirect to welcome page if no user (neither authenticated nor guest)
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !guestUser) {
+      router.push('/welcome')
+    }
+  }, [isLoading, isAuthenticated, guestUser, router])
+
+  // Use guest user if no authenticated user
+  const currentUser = user || guestUser
   
   const games = [
     {
@@ -152,7 +167,7 @@ const HomePage = () => {
                 <>
                   <div className="hidden sm:flex items-center space-x-2 text-gray-300">
                     <span className="text-sm">Balance:</span>
-                    <span className="text-green-400 font-semibold">${user.balance.toFixed(2)}</span>
+                    <span className="text-green-400 font-semibold">${(currentUser?.balance || 0).toFixed(2)}</span>
                   </div>
                   <Link href="/profile">
                     <EnhancedButton variant="ghost" size="sm" className="flex items-center space-x-2">
@@ -199,8 +214,8 @@ const HomePage = () => {
                 </span>
               </h1>
               <p className="text-xl md:text-2xl text-gray-300 mb-4 max-w-3xl mx-auto">
-                {isAuthenticated && user 
-                  ? `Ready to continue your gaming journey? Your balance: $${user.balance.toFixed(2)}`
+                {currentUser 
+                  ? `Ready to continue your gaming journey? Your balance: $${(currentUser.balance || 0).toFixed(2)}`
                   : 'The ultimate destination for CS2 skin gambling'
                 }
               </p>

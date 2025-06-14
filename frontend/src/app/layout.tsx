@@ -8,6 +8,9 @@ import { ToastProvider } from '@/components/ui/ToastNotifications'
 import ActivitySimulator from '@/components/ui/ActivitySimulator'
 import { UserProvider } from '@/contexts/UserContext'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ThemeProvider } from '@/contexts/ThemeContext'
+import PaymentProvider from '@/contexts/PaymentContext'
+import { GuestProvider } from '@/contexts/GuestContext'
 
 export const metadata: Metadata = {
   title: 'CS Skins Casino - Premier CS:GO/CS2 Skin Gambling',
@@ -21,23 +24,33 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-gaming-dark text-white font-gaming antialiased">
-        <AuthProvider>
-          <UserProvider>
-            <ToastProvider>
-              <div className="min-h-screen flex flex-col bg-gradient-gaming">
-                <Navbar />
-                <main className="flex-1">
-                  {children}
-                </main>
-                <Footer />
-                <LiveChat />
-                <ActivitySimulator enabled={true} frequency={4} />
-              </div>
-            </ToastProvider>
-          </UserProvider>
-        </AuthProvider>
+    <html lang="en">
+      <head>
+        <meta name="theme-color" content="#0f0f23" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      </head>
+      <body className="bg-gaming-dark dark:bg-gaming-dark light:bg-gray-50 text-white dark:text-white light:text-gray-900 font-gaming antialiased">
+        <ThemeProvider>
+          <GuestProvider>
+            <AuthProvider>
+              <PaymentProvider>
+                <UserProvider>
+                  <ToastProvider>
+                <div className="min-h-screen flex flex-col bg-gradient-gaming dark:bg-gradient-gaming light:bg-gradient-to-br light:from-gray-50 light:to-gray-100">
+                  <Navbar />
+                  <main className="flex-1">
+                    {children}
+                  </main>
+                  <Footer />
+                  <LiveChat />
+                  <ActivitySimulator enabled={true} frequency={0.3} />
+                </div>
+                </ToastProvider>
+              </UserProvider>
+              </PaymentProvider>
+            </AuthProvider>
+          </GuestProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

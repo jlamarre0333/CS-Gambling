@@ -1,76 +1,166 @@
-const API_BASE_URL = 'http://localhost:3001'
+// Simple API client for Express backend
+const API_BASE_URL = 'http://localhost:3001/api'
+
+interface ApiResponse<T = any> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
+interface User {
+  id: string
+  username: string
+  balance: number
+  isGuest: boolean
+  gamesPlayed: number
+  totalWon: number
+  totalLost: number
+  createdAt: string
+}
+
+interface GameResult {
+  id: string
+  userId: string
+  gameType: 'coinflip' | 'crash' | 'jackpot' | 'roulette'
+  betAmount: number
+  winAmount: number
+  result: any
+  timestamp: string
+}
 
 class ApiClient {
-  private baseUrl: string
-
-  constructor(baseUrl: string = API_BASE_URL) {
-    this.baseUrl = baseUrl
+  private static instance: ApiClient
+  
+  private constructor() {}
+  
+  public static getInstance(): ApiClient {
+    if (!ApiClient.instance) {
+      ApiClient.instance = new ApiClient()
+    }
+    return ApiClient.instance
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    }
-
+  private async request<T>(
+    endpoint: string, 
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
     try {
-      const response = await fetch(url, config)
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        credentials: 'include',
+        ...options,
+      })
+
+      const data = await response.json()
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        return {
+          success: false,
+          error: data.error || `HTTP ${response.status}`
+        }
       }
-      
-      return await response.json()
+
+      return {
+        success: true,
+        data
+      }
     } catch (error) {
       console.error('API request failed:', error)
-      throw error
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error'
+      }
     }
   }
 
   // Health check
-  async getHealth() {
+  async healthCheck(): Promise<ApiResponse> {
     return this.request('/health')
   }
 
-  // Auth
-  async demoLogin(username: string) {
-    return this.request('/api/auth/demo-login', {
+  // User management
+  async createUser(username?: string): Promise<ApiResponse<{ user: User }>> {
+    return this.request('/users', {
       method: 'POST',
-      body: JSON.stringify({ username }),
+      body: JSON.stringify({ username, isGuest: true })
     })
   }
 
-  // User
-  async getUserProfile(userId: string) {
-    return this.request(`/api/user/profile/${userId}`)
+  async getUser(userId: string): Promise<ApiResponse<{ user: User }>> {
+    return this.request(`/users/${userId}`)
   }
 
-  // Games
-  async placeBet(userId: string, gameType: string, betAmount: number, gameData?: any) {
-    return this.request('/api/games/bet', {
-      method: 'POST',
-      body: JSON.stringify({ userId, gameType, betAmount, gameData }),
+  async updateUserBalance(userId: string, balance: number): Promise<ApiResponse<{ user: User }>> {
+    return this.request(`/users/${userId}/balance`, {
+      method: 'PATCH',
+      body: JSON.stringify({ balance })
     })
   }
 
-  async getGameHistory(userId: string) {
-    return this.request(`/api/games/history/${userId}`)
+  // Game endpoints
+  async playCoinflip(
+    userId: string, 
+    betAmount: number, 
+    choice: 'heads' | 'tails'
+  ): Promise<ApiResponse<{ game: GameResult; user: User; winAmount: number; lossAmount: number }>> {
+    return this.request('/games/coinflip', {
+      method: 'POST',
+      body: JSON.stringify({ userId, betAmount, choice })
+    })
   }
 
-  // Leaderboard
-  async getLeaderboard() {
-    return this.request('/api/leaderboard')
+  async playCrash(
+    userId: string, 
+    betAmount: number, 
+    cashOutAt?: number
+  ): Promise<ApiResponse<{ game: GameResult; user: User; winAmount: number; lossAmount: number }>> {
+    return this.request('/games/crash', {
+      method: 'POST',
+      body: JSON.stringify({ userId, betAmount, cashOutAt })
+    })
   }
 
-  // Social
-  async getSocialFeed() {
-    return this.request('/api/social/feed')
+  async playRoulette(
+    userId: string, 
+    betAmount: number, 
+    betType: 'red' | 'black' | 'green'
+  ): Promise<ApiResponse<{ game: GameResult; user: User; winAmount: number; lossAmount: number }>> {
+    return this.request('/games/roulette', {
+      method: 'POST',
+      body: JSON.stringify({ userId, betAmount, betType })
+    })
+  }
+
+  async playJackpot(
+    userId: string, 
+    betAmount: number
+  ): Promise<ApiResponse<{ game: GameResult; user: User; winAmount: number; lossAmount: number }>> {
+    return this.request('/games/jackpot', {
+      method: 'POST',
+      body: JSON.stringify({ userId, betAmount })
+    })
+  }
+
+  // Data endpoints
+  async getUserGames(userId: string): Promise<ApiResponse<{ games: GameResult[] }>> {
+    return this.request(`/users/${userId}/games`)
+  }
+
+  async getRecentGames(): Promise<ApiResponse<{ games: any[] }>> {
+    return this.request('/games/recent')
+  }
+
+  async getLeaderboard(): Promise<ApiResponse<{ leaderboard: any[] }>> {
+    return this.request('/leaderboard')
+  }
+
+  async getServerStats(): Promise<ApiResponse<{ stats: any }>> {
+    return this.request('/stats')
   }
 }
 
-export const api = new ApiClient()
-export default api 
+export const api = ApiClient.getInstance()
+export type { User, GameResult, ApiResponse } 

@@ -10,7 +10,7 @@ interface ActivitySimulatorProps {
 
 const ActivitySimulator: React.FC<ActivitySimulatorProps> = ({ 
   enabled = true, 
-  frequency = 3 
+  frequency = 0.5 // Changed from 3 to 0.5 notifications per minute (much slower)
 }) => {
   const { addNotification } = useToast()
 
@@ -140,10 +140,10 @@ const ActivitySimulator: React.FC<ActivitySimulatorProps> = ({
       }, interval)
     }
 
-    // Start the activity simulation after a short delay
+    // Start the activity simulation after a longer delay
     const initialDelay = setTimeout(() => {
       scheduleNext()
-    }, 5000) // Wait 5 seconds before starting
+    }, 15000) // Wait 15 seconds before starting (increased from 5)
 
     return () => {
       clearTimeout(initialDelay)
@@ -154,13 +154,13 @@ const ActivitySimulator: React.FC<ActivitySimulatorProps> = ({
   useEffect(() => {
     if (!enabled) return
 
-    // Generate 2-3 initial notifications to show the system is active
-    const initialNotifications = Math.floor(Math.random() * 2) + 2
+    // Generate 1-2 initial notifications to show the system is active (reduced)
+    const initialNotifications = Math.floor(Math.random() * 2) + 1
     
     for (let i = 0; i < initialNotifications; i++) {
       setTimeout(() => {
         generateRandomActivity()
-      }, (i + 1) * 2000) // Spread them out over 6 seconds
+      }, (i + 1) * 8000) // Spread them out over 16 seconds (increased delay)
     }
   }, [enabled, generateRandomActivity])
 

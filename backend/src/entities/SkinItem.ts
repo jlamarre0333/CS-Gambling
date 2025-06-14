@@ -28,62 +28,62 @@ export enum SkinStatus {
 @Entity('skin_items')
 export class SkinItem {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id!: string
 
-  @Column()
-  steamItemId: string
+  @Column({ type: 'varchar', length: 255 })
+  steamItemId!: string
 
-  @Column()
-  name: string
+  @Column({ type: 'varchar', length: 255 })
+  name!: string
 
-  @Column()
-  marketName: string
+  @Column({ type: 'varchar', length: 255 })
+  marketName!: string
 
-  @Column()
-  imageUrl: string
+  @Column({ type: 'varchar', length: 500 })
+  imageUrl!: string
 
   @Column({
     type: 'enum',
     enum: SkinRarity
   })
-  rarity: SkinRarity
+  rarity!: SkinRarity
 
   @Column({
     type: 'enum',
     enum: SkinCondition
   })
-  condition: SkinCondition
+  condition!: SkinCondition
 
   @Column({ type: 'decimal', precision: 8, scale: 4, nullable: true })
-  floatValue: number
+  floatValue!: number
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  marketPrice: number
+  marketPrice!: number
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  sitePrice: number
+  sitePrice!: number
 
   @Column({
     type: 'enum',
     enum: SkinStatus,
     default: SkinStatus.AVAILABLE
   })
-  status: SkinStatus
+  status!: SkinStatus
 
-  @Column({ nullable: true })
-  userId: string
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  userId!: string
 
-  @Column({ nullable: true })
-  transactionId: string
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  transactionId!: string
 
   @Column({ type: 'jsonb', default: {} })
-  metadata: Record<string, any>
+  metadata!: Record<string, any>
 
   @CreateDateColumn()
-  createdAt: Date
+  createdAt!: Date
 
   @UpdateDateColumn()
-  updatedAt: Date
+  updatedAt!: Date
 
   // Virtual properties
   get rarityMultiplier(): number {
