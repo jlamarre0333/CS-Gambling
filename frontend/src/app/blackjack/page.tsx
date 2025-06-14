@@ -8,7 +8,7 @@ import {
   ArrowPathIcon,
   CurrencyDollarIcon,
   ClockIcon,
-  TargetIcon,
+  ChartBarIcon,
   TrophyIcon
 } from '@heroicons/react/24/outline';
 
@@ -494,7 +494,7 @@ export default function BlackjackPage() {
             {gameState.gamePhase === 'betting' && (
               <div className="gaming-card p-4">
                 <h3 className="font-bold mb-4 flex items-center">
-                  <TargetIcon className="mr-2 w-5 h-5" />
+                  <ChartBarIcon className="mr-2 w-5 h-5" />
                   Bet Amount
                 </h3>
                 

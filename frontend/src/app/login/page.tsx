@@ -1,65 +1,31 @@
 'use client'
 
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import React, { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { 
-  UserIcon, 
+  ArrowLeftIcon,
   ShieldCheckIcon,
-  ExclamationTriangleIcon,
-  ArrowLeftIcon
+  UserGroupIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 
 const LoginPage = () => {
   const router = useRouter()
-  const [username, setUsername] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [loginType, setLoginType] = useState<'user' | 'admin'>('user')
+  const { isAuthenticated, user } = useAuth()
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
-
-    try {
-      const response = await fetch('http://localhost:3001/api/auth/demo-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: loginType === 'admin' ? 'admin' : username
-        })
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        // Store token in localStorage
-        localStorage.setItem('auth_token', data.token)
-        localStorage.setItem('user_data', JSON.stringify(data.user))
-        
-        // Show success message
-        alert(`✅ Login successful! Welcome ${data.user.username} (${data.user.role})`)
-        
-        // Redirect to home page
-        router.push('/')
-      } else {
-        setError(data.error || 'Login failed')
-      }
-    } catch (err: any) {
-      setError('Login failed. Please check if the backend is running on port 3001.')
-    } finally {
-      setIsLoading(false)
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      router.push('/')
     }
-  }
+  }, [isAuthenticated, user, router])
 
   const handleSteamLogin = () => {
-    // For MVP, just simulate Steam login
-    setUsername('steam_user')
-    setLoginType('user')
+    // Redirect to our backend Steam OAuth endpoint
+    window.location.href = 'http://localhost:3001/api/steam-auth/login'
   }
 
   return (
@@ -91,124 +57,61 @@ const LoginPage = () => {
             <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="text-white font-bold text-2xl">CS</span>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Welcome Back</h1>
-            <p className="text-gray-400">Login to CS Gambling Platform</p>
+            <h1 className="text-2xl font-bold text-white mb-2">Welcome to CS Gambling</h1>
+            <p className="text-gray-400">Login with your Steam account to start playing</p>
           </div>
 
-          {/* Login Type Selector */}
-          <div className="flex space-x-2 mb-6">
-            <button
-              onClick={() => setLoginType('user')}
-              className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-medium transition-all ${
-                loginType === 'user'
-                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:text-white'
-              }`}
-            >
-              <UserIcon className="w-4 h-4" />
-              <span>User Login</span>
-            </button>
-            <button
-              onClick={() => setLoginType('admin')}
-              className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-medium transition-all ${
-                loginType === 'admin'
-                  ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:text-white'
-              }`}
-            >
-              <ShieldCheckIcon className="w-4 h-4" />
-              <span>Admin</span>
-            </button>
+          {/* Features */}
+          <div className="space-y-3 mb-8">
+            <div className="flex items-center space-x-3 text-gray-300">
+              <ShieldCheckIcon className="w-5 h-5 text-green-400" />
+              <span className="text-sm">Secure Steam authentication</span>
+            </div>
+            <div className="flex items-center space-x-3 text-gray-300">
+              <UserGroupIcon className="w-5 h-5 text-blue-400" />
+              <span className="text-sm">Join thousands of players</span>
+            </div>
+            <div className="flex items-center space-x-3 text-gray-300">
+              <CurrencyDollarIcon className="w-5 h-5 text-yellow-400" />
+              <span className="text-sm">Start with $1000 bonus</span>
+            </div>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center space-x-2 text-red-400"
-            >
-              <ExclamationTriangleIcon className="w-4 h-4" />
-              <span className="text-sm">{error}</span>
-            </motion.div>
-          )}
+          {/* Steam Login Button */}
+          <motion.button
+            onClick={handleSteamLogin}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-blue-500/25"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+            </svg>
+            <span>Login with Steam</span>
+          </motion.button>
 
-          {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
-            {loginType === 'user' && (
-              <>
-                {/* Steam Login Button */}
-                <button
-                  type="button"
-                  onClick={handleSteamLogin}
-                  className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3 px-4 rounded-xl font-medium transition-all duration-300"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-                  </svg>
-                  <span>Login with Steam</span>
-                </button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-700" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-gray-900 text-gray-400">or use demo login</span>
-                  </div>
-                </div>
-
-                {/* Username Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Username (Demo)
-                  </label>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter any username"
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                    required
-                  />
-                </div>
-              </>
-            )}
-
-            {loginType === 'admin' && (
-              <div className="text-center py-4">
-                <p className="text-gray-300 mb-2">Admin Demo Login</p>
-                <p className="text-sm text-gray-400">Click login to access admin dashboard</p>
-              </div>
-            )}
-
-            {/* Login Button */}
-            <button
-              type="submit"
-              disabled={isLoading || (loginType === 'user' && !username.trim())}
-              className={`w-full py-3 px-4 rounded-xl font-medium transition-all duration-300 ${
-                loginType === 'admin'
-                  ? 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600'
-                  : 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600'
-              } text-white disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Logging in...</span>
-                </div>
-              ) : (
-                `Login as ${loginType === 'admin' ? 'Admin' : 'User'}`
-              )}
-            </button>
-          </form>
-
-          {/* Demo Info */}
-          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-            <p className="text-sm text-blue-300 text-center">
-              <strong>Demo Mode:</strong> Use any username for user login, or click Admin to access admin features.
-            </p>
+          {/* Info */}
+          <div className="mt-6 p-4 bg-gray-800/50 rounded-lg">
+            <h3 className="text-sm font-semibold text-gray-300 mb-2">Why Steam Login?</h3>
+            <ul className="text-xs text-gray-400 space-y-1">
+              <li>• Secure authentication through Steam</li>
+              <li>• Access to your CS2 inventory</li>
+              <li>• No need to create a new account</li>
+              <li>• Instant verification and setup</li>
+            </ul>
           </div>
+
+          {/* Terms */}
+          <p className="text-xs text-gray-500 text-center mt-6">
+            By logging in, you agree to our{' '}
+            <Link href="/terms" className="text-blue-400 hover:text-blue-300">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="text-blue-400 hover:text-blue-300">
+              Privacy Policy
+            </Link>
+          </p>
         </div>
       </motion.div>
     </div>

@@ -13,10 +13,14 @@ import {
   UserGroupIcon,
   CurrencyEuroIcon,
   LightBulbIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  UserIcon
 } from '@heroicons/react/24/outline'
+import { useAuth } from '@/contexts/AuthContext'
 
 const HomePage = () => {
+  const { user, isAuthenticated } = useAuth()
+  
   const games = [
     {
       id: 'coinflip',
@@ -142,14 +146,20 @@ const HomePage = () => {
             >
               <h1 className="text-5xl md:text-7xl font-bold mb-6">
                 <span className="bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">
-                  CS Gambling
+                  {isAuthenticated && user ? `Welcome back, ${user.username}!` : 'CS Gambling'}
                 </span>
               </h1>
               <p className="text-xl md:text-2xl text-gray-300 mb-4 max-w-3xl mx-auto">
-                The ultimate destination for CS2 skin gambling
+                {isAuthenticated && user 
+                  ? `Ready to continue your gaming journey? Your balance: $${user.balance.toFixed(2)}`
+                  : 'The ultimate destination for CS2 skin gambling'
+                }
               </p>
               <p className="text-lg text-gray-400 mb-12 max-w-2xl mx-auto">
-                Experience provably fair gaming with instant withdrawals, competitive odds, and a thriving community of players.
+                {isAuthenticated && user
+                  ? `Level ${user.level} player • Steam ID: ${user.steamId.slice(-8)} • Join thousands of players in fair gaming`
+                  : 'Experience provably fair gaming with instant withdrawals, competitive odds, and a thriving community of players.'
+                }
               </p>
             </motion.div>
 
@@ -159,22 +169,45 @@ const HomePage = () => {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
-              <Link
-                href="/login"
-                className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25 flex items-center space-x-2"
-              >
-                <PlayIcon className="w-5 h-5" />
-                <span>Login with Steam</span>
-                <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                href="/coinflip"
-                className="group bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25 flex items-center space-x-2"
-              >
-                <PlayIcon className="w-5 h-5" />
-                <span>Play Demo</span>
-                <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
+              {isAuthenticated && user ? (
+                <>
+                  <Link
+                    href="/coinflip"
+                    className="group bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25 flex items-center space-x-2"
+                  >
+                    <PlayIcon className="w-5 h-5" />
+                    <span>Start Playing</span>
+                    <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                  <Link
+                    href="/inventory"
+                    className="group bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25 flex items-center space-x-2"
+                  >
+                    <UserIcon className="w-5 h-5" />
+                    <span>View Inventory</span>
+                    <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25 flex items-center space-x-2"
+                  >
+                    <PlayIcon className="w-5 h-5" />
+                    <span>Login with Steam</span>
+                    <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                  <Link
+                    href="/coinflip"
+                    className="group bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25 flex items-center space-x-2"
+                  >
+                    <PlayIcon className="w-5 h-5" />
+                    <span>Play Demo</span>
+                    <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </>
+              )}
             </motion.div>
           </div>
         </div>
@@ -338,30 +371,70 @@ const HomePage = () => {
             className="gaming-card p-12"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Ready to Start Winning?
+              {isAuthenticated && user ? 'Choose Your Next Game' : 'Ready to Start Winning?'}
             </h2>
             <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-              Join thousands of players and experience the thrill of CS2 skin gambling with guaranteed fair play and instant payouts.
+              {isAuthenticated && user 
+                ? `Welcome back ${user.username}! Your current balance is $${user.balance.toFixed(2)}. Pick a game and start winning!`
+                : 'Join thousands of players and experience the thrill of CS2 skin gambling with guaranteed fair play and instant payouts.'
+              }
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/login"
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25"
-              >
-                Login with Steam
-              </Link>
-              <Link
-                href="/inventory"
-                className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25"
-              >
-                View Inventory
-              </Link>
-              <Link
-                href="/coinflip"
-                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25"
-              >
-                Play Demo
-              </Link>
+              {isAuthenticated && user ? (
+                <>
+                  <Link
+                    href="/coinflip"
+                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25"
+                  >
+                    🎯 Coin Flip
+                  </Link>
+                  <Link
+                    href="/jackpot"
+                    className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-yellow-500/25"
+                  >
+                    🏆 Jackpot
+                  </Link>
+                  <Link
+                    href="/inventory"
+                    className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25"
+                  >
+                    📦 My Inventory
+                  </Link>
+                  <Link
+                    href="/steam-test"
+                    className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/25"
+                  >
+                    🔧 Steam Data
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25"
+                  >
+                    Login with Steam
+                  </Link>
+                  <Link
+                    href="/steam-test"
+                    className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/25"
+                  >
+                    🔧 Test Steam Data
+                  </Link>
+                  <Link
+                    href="/inventory"
+                    className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25"
+                  >
+                    View Inventory
+                  </Link>
+                  <Link
+                    href="/coinflip"
+                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/25"
+                  >
+                    Play Demo
+                  </Link>
+                </>
+              )}
             </div>
           </motion.div>
         </div>

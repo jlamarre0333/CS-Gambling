@@ -8,6 +8,8 @@ import { AppDataSource } from './config/database-simple'
 import { User } from './entities/User-simple'
 import { Game } from './entities/Game'
 import { Transaction } from './entities/Transaction'
+import inventoryRoutes from './routes/inventory'
+import steamAuthRoutes from './routes/steamAuth'
 
 // Load environment variables
 dotenv.config()
@@ -169,6 +171,10 @@ app.get('/api/auth/me', (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' })
 })
+
+// Steam integration routes
+app.use('/api/inventory', inventoryRoutes)
+app.use('/api/steam-auth', steamAuthRoutes)
 
 // Jackpot game endpoints
 app.get('/api/games/jackpot/current', (req, res) => {

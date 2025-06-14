@@ -1,5 +1,5 @@
 import express from 'express'
-import steamService from '../services/steamService'
+import steamIntegrationService from '../services/steamIntegrationService'
 
 const router = express.Router()
 
@@ -14,20 +14,23 @@ router.get('/', async (req, res) => {
     
     console.log(`Fetching Steam inventory for user: ${demoSteamId}`)
     
-    // Get real Steam inventory
-    const inventory = await steamService.getUserInventory(demoSteamId)
+    // Validate Steam ID format
+    if (!steamIntegrationService.isValidSteamId(demoSteamId)) {
+      return res.status(400).json({ error: 'Invalid Steam ID format' })
+    }
     
-    // Add selected field for frontend compatibility
-    const itemsWithSelection = inventory.items.map(item => ({
-      ...item,
-      selected: false
-    }))
+    // Get real Steam inventory using our integration service
+    const inventory = await steamIntegrationService.getSteamInventory(demoSteamId)
+    
+    if (!inventory) {
+      return res.status(404).json({ error: 'Failed to fetch inventory or inventory is private' })
+    }
 
     res.json({
-      items: itemsWithSelection,
+      items: inventory.items,
       totalValue: inventory.totalValue,
       totalItems: inventory.totalItems,
-      steamId: demoSteamId,
+      steamId: inventory.steamId,
       lastUpdated: new Date()
     })
   } catch (error) {
@@ -49,7 +52,11 @@ router.post('/refresh', async (req, res) => {
     console.log(`Refreshing inventory for Steam ID: ${steamId}`)
     
     // Get fresh inventory from Steam API
-    const inventory = await steamService.getUserInventory(steamId)
+    const inventory = await steamIntegrationService.getSteamInventory(steamId)
+    
+    if (!inventory) {
+      return res.status(404).json({ error: 'Failed to refresh inventory or inventory is private' })
+    }
     
     res.json({ 
       message: 'Inventory refreshed successfully',
@@ -71,9 +78,21 @@ router.get('/profile/:steamId', async (req, res) => {
     
     console.log(`Fetching Steam profile for: ${steamId}`)
     
-    const profile = await steamService.getUserProfile(steamId)
+    // Validate Steam ID format
+    if (!steamIntegrationService.isValidSteamId(steamId)) {
+      return res.status(400).json({ error: 'Invalid Steam ID format' })
+    }
     
-    res.json(profile)
+    const profile = await steamIntegrationService.getSteamProfile(steamId)
+    
+    if (!profile) {
+      return res.status(404).json({ error: 'Steam profile not found' })
+    }
+    
+    res.json({
+      success: true,
+      profile
+    })
   } catch (error) {
     console.error('Error fetching Steam profile:', error)
     res.status(500).json({ error: 'Failed to fetch Steam profile' })
@@ -111,6 +130,125 @@ router.get('/item/:itemId', async (req, res) => {
     res.json(item)
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch item details' })
+  }
+})
+
+// Get tradable items for gambling
+router.get('/tradable/:steamId', async (req, res) => {
+  try {
+    const { steamId } = req.params
+    
+    console.log(`Fetching tradable items for: ${steamId}`)
+    
+    // Validate Steam ID format
+    if (!steamIntegrationService.isValidSteamId(steamId)) {
+      return res.status(400).json({ error: 'Invalid Steam ID format' })
+    }
+    
+    const tradableItems = await steamIntegrationService.getUserTradableItems(steamId)
+    
+    res.json({
+      success: true,
+      items: tradableItems,
+      totalItems: tradableItems.length,
+      totalValue: steamIntegrationService.calculateSelectedItemsValue(tradableItems.map(item => ({ ...item, selected: true })))
+    })
+  } catch (error) {
+    console.error('Error fetching tradable items:', error)
+    res.status(500).json({ error: 'Failed to fetch tradable items' })
+  }
+})
+
+// Validate item ownership
+router.post('/validate-ownership', async (req, res) => {
+  try {
+    const { steamId, itemIds } = req.body
+    
+    if (!steamId || !itemIds || !Array.isArray(itemIds)) {
+      return res.status(400).json({ error: 'Steam ID and item IDs are required' })
+    }
+    
+    // Validate Steam ID format
+    if (!steamIntegrationService.isValidSteamId(steamId)) {
+      return res.status(400).json({ error: 'Invalid Steam ID format' })
+    }
+    
+    const ownsItems = await steamIntegrationService.validateUserOwnsItems(steamId, itemIds)
+    
+    res.json({
+      success: true,
+      ownsItems,
+      validatedItems: itemIds.length
+    })
+  } catch (error) {
+    console.error('Error validating item ownership:', error)
+    res.status(500).json({ error: 'Failed to validate item ownership' })
+  }
+})
+
+// Sync user inventory
+router.post('/sync/:steamId', async (req, res) => {
+  try {
+    const { steamId } = req.params
+    const user = req.user as any
+    
+    console.log(`Syncing inventory for Steam ID: ${steamId}`)
+    
+    // Validate Steam ID format
+    if (!steamIntegrationService.isValidSteamId(steamId)) {
+      return res.status(400).json({ error: 'Invalid Steam ID format' })
+    }
+    
+    const userId = user?.id || `user_${steamId}`
+    const syncSuccess = await steamIntegrationService.syncUserInventory(userId, steamId)
+    
+    if (syncSuccess) {
+      res.json({
+        success: true,
+        message: 'Inventory synced successfully',
+        syncedAt: new Date()
+      })
+    } else {
+      res.status(500).json({ error: 'Failed to sync inventory' })
+    }
+  } catch (error) {
+    console.error('Error syncing inventory:', error)
+    res.status(500).json({ error: 'Failed to sync inventory' })
+  }
+})
+
+// Get item price
+router.get('/price/:itemName', async (req, res) => {
+  try {
+    const { itemName } = req.params
+    
+    console.log(`Fetching price for item: ${itemName}`)
+    
+    const priceData = await steamIntegrationService.getItemPrice(itemName)
+    
+    if (priceData) {
+      res.json({
+        success: true,
+        itemName,
+        ...priceData
+      })
+    } else {
+      res.status(404).json({ error: 'Price not available for this item' })
+    }
+  } catch (error) {
+    console.error('Error fetching item price:', error)
+    res.status(500).json({ error: 'Failed to fetch item price' })
+  }
+})
+
+// Steam server status
+router.get('/steam-status', async (req, res) => {
+  try {
+    const status = await steamIntegrationService.getSteamServerStatus()
+    res.json(status)
+  } catch (error) {
+    console.error('Error checking Steam server status:', error)
+    res.status(500).json({ error: 'Failed to check Steam server status' })
   }
 })
 

@@ -20,12 +20,14 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import { api } from '../../config/api'
+import { useAuth } from '@/contexts/AuthContext'
 
 const Navbar = () => {
   const pathname = usePathname()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [userBalance, setUserBalance] = useState(1250.75)
+  const { user, isAuthenticated, logout } = useAuth()
+  const userBalance = user?.balance || 0
 
   useEffect(() => {
     const handleScroll = () => {
@@ -139,24 +141,61 @@ const Navbar = () => {
 
               {/* User Menu */}
               <div className="hidden lg:flex items-center space-x-3">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-                >
-                  <CogIcon className="w-5 h-5" />
-                </motion.button>
-                
-                <Link href="/login">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg hover:shadow-orange-500/25"
-                  >
-                    <UserIcon className="w-4 h-4" />
-                    <span className="hidden xl:block">Login</span>
-                  </motion.button>
-                </Link>
+                {isAuthenticated && user ? (
+                  <>
+                    {/* User Profile */}
+                    <div className="flex items-center space-x-3 bg-gray-900/50 backdrop-blur-sm rounded-xl px-4 py-2 border border-gray-700/50">
+                      <img 
+                        src={user.avatar} 
+                        alt={user.username}
+                        className="w-8 h-8 rounded-lg"
+                      />
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-white">{user.username}</p>
+                        <p className="text-xs text-gray-400">Level {user.level}</p>
+                      </div>
+                    </div>
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                      <CogIcon className="w-5 h-5" />
+                    </motion.button>
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={logout}
+                      className="flex items-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300"
+                    >
+                      <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                      <span className="hidden xl:block">Logout</span>
+                    </motion.button>
+                  </>
+                ) : (
+                  <>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                      <CogIcon className="w-5 h-5" />
+                    </motion.button>
+                    
+                    <Link href="/login">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg hover:shadow-orange-500/25"
+                      >
+                        <UserIcon className="w-4 h-4" />
+                        <span className="hidden xl:block">Login</span>
+                      </motion.button>
+                    </Link>
+                  </>
+                )}
               </div>
 
               {/* Mobile Menu Button */}
@@ -265,21 +304,59 @@ const Navbar = () => {
 
                 {/* Footer Actions */}
                 <div className="p-6 border-t border-gray-800 space-y-3">
-                  <button className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-3 rounded-xl font-medium transition-all duration-300">
-                    <UserIcon className="w-5 h-5" />
-                    <span>Sign In with Steam</span>
-                  </button>
-                  
-                  <div className="flex space-x-3">
-                    <button className="flex-1 flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white py-2.5 rounded-lg transition-colors">
-                      <CogIcon className="w-4 h-4" />
-                      <span>Settings</span>
-                    </button>
-                    <button className="flex-1 flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white py-2.5 rounded-lg transition-colors">
-                      <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                      <span>Exit</span>
-                    </button>
-                  </div>
+                  {isAuthenticated && user ? (
+                    <>
+                      {/* User Profile in Mobile */}
+                      <div className="bg-gray-800/50 rounded-xl p-4 mb-4">
+                        <div className="flex items-center space-x-3">
+                          <img 
+                            src={user.avatar} 
+                            alt={user.username}
+                            className="w-12 h-12 rounded-xl"
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium text-white">{user.username}</p>
+                            <p className="text-sm text-gray-400">Level {user.level}</p>
+                            <p className="text-xs text-green-400">Steam ID: {user.steamId.slice(-8)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-3">
+                        <button className="flex-1 flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white py-2.5 rounded-lg transition-colors">
+                          <CogIcon className="w-4 h-4" />
+                          <span>Settings</span>
+                        </button>
+                        <button 
+                          onClick={logout}
+                          className="flex-1 flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg transition-colors"
+                        >
+                          <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                          <span>Logout</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                        <button className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-3 rounded-xl font-medium transition-all duration-300">
+                          <UserIcon className="w-5 h-5" />
+                          <span>Sign In with Steam</span>
+                        </button>
+                      </Link>
+                      
+                      <div className="flex space-x-3">
+                        <button className="flex-1 flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white py-2.5 rounded-lg transition-colors">
+                          <CogIcon className="w-4 h-4" />
+                          <span>Settings</span>
+                        </button>
+                        <button className="flex-1 flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white py-2.5 rounded-lg transition-colors">
+                          <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                          <span>Exit</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>
